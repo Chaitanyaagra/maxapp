@@ -2365,7 +2365,7 @@ const STR = {
     ip_title:"What's the problem here?", ip_describe:'Describe the issue', ip_placeholder:"What's wrong? e.g. Tube light not working near lift", ip_priority:'Priority', ip_assign:'Assign supervisor', ip_assign_later:'— Assign later —', ip_tags:'Tags', ip_skip:'Skip for now', ip_save:'Save issue',
     lbl_photos:'Photos', btn_take_photo:'Take / add photo', btn_add_more_photo:'Add more',
     res_title:'Resident Complaints', res_sub:'Raise a complaint, track it, and rate the resolution', res_total:'Total complaints', res_open:'Open', res_avg:'Avg rating', btn_raise_complaint:'Raise a Complaint', res_search_ph:'Search by flat, name or location…',
-    rc_name:'Your Name', rc_mobile:'Mobile *', rc_flat:'Flat No.', rc_tower:'Tower', rc_problem:"What's the problem?", rc_problem_ph:'e.g. Water leakage near the lift, 4th floor', rc_sendto:'Send to (optional)', rc_submit:'Submit complaint', rc_society_assign:'— Society will assign —',
+    rc_name:'Your Name *', rc_mobile:'Mobile *', rc_flat:'Flat No. *', rc_tower:'Tower', rc_problem:"What's the problem?", rc_problem_ph:'e.g. Water leakage near the lift, 4th floor', rc_sendto:'Send to (optional)', rc_submit:'Submit complaint', rc_society_assign:'— Society will assign —',
     rate_q:'How was the resolution? Rate it:', rate_review_ph:'Write a short review (optional)', rate_submit:'Submit rating', rate_thanks:'Thank you for your feedback 🙏',
     res_empty_title:'No complaints yet', res_empty_sub:'Residents can raise a complaint with a photo — it goes straight to the maintenance team.',
     toast_enter_name:'Please enter your name', toast_enter_flat:'Please enter your flat number (e.g. A-1203)', toast_enter_problem:'Please describe the problem or its location', toast_complaint_done:'Complaint submitted ✓ — the team has been notified',
@@ -2402,7 +2402,7 @@ const STR = {
     ip_title:'यहाँ क्या समस्या है?', ip_describe:'समस्या बताएँ', ip_placeholder:'क्या खराबी है? जैसे — लिफ्ट के पास ट्यूबलाइट नहीं जल रही', ip_priority:'प्राथमिकता', ip_assign:'सुपरवाइज़र चुनें', ip_assign_later:'— बाद में तय करें —', ip_tags:'टैग', ip_skip:'अभी छोड़ें', ip_save:'समस्या सहेजें',
     lbl_photos:'फ़ोटो', btn_take_photo:'फ़ोटो लें / जोड़ें', btn_add_more_photo:'और जोड़ें',
     res_title:'निवासी शिकायतें', res_sub:'शिकायत दर्ज करें, स्थिति देखें और समाधान को रेट करें', res_total:'कुल शिकायतें', res_open:'खुली', res_avg:'औसत रेटिंग', btn_raise_complaint:'शिकायत दर्ज करें', res_search_ph:'फ्लैट, नाम या जगह से खोजें…',
-    rc_name:'आपका नाम', rc_mobile:'मोबाइल *', rc_flat:'फ्लैट नं.', rc_tower:'टावर', rc_problem:'समस्या क्या है?', rc_problem_ph:'जैसे — लिफ्ट के पास पानी का रिसाव, चौथी मंज़िल', rc_sendto:'किसे भेजें (वैकल्पिक)', rc_submit:'शिकायत भेजें', rc_society_assign:'— सोसाइटी तय करेगी —',
+    rc_name:'आपका नाम *', rc_mobile:'मोबाइल *', rc_flat:'फ्लैट नं. *', rc_tower:'टावर', rc_problem:'समस्या क्या है?', rc_problem_ph:'जैसे — लिफ्ट के पास पानी का रिसाव, चौथी मंज़िल', rc_sendto:'किसे भेजें (वैकल्पिक)', rc_submit:'शिकायत भेजें', rc_society_assign:'— सोसाइटी तय करेगी —',
     rate_q:'समाधान कैसा रहा? रेटिंग दें:', rate_review_ph:'छोटा रिव्यू लिखें (वैकल्पिक)', rate_submit:'रेटिंग भेजें', rate_thanks:'आपकी फ़ीडबैक के लिए धन्यवाद 🙏',
     res_empty_title:'अभी कोई शिकायत नहीं', res_empty_sub:'निवासी फ़ोटो के साथ शिकायत दर्ज कर सकते हैं — यह सीधे मेंटेनेंस टीम तक पहुँचती है।',
     toast_enter_name:'कृपया अपना नाम लिखें', toast_enter_flat:'कृपया फ्लैट नंबर लिखें (जैसे A-1203)', toast_enter_problem:'कृपया समस्या या उसकी जगह बताएँ', toast_complaint_done:'शिकायत दर्ज हो गई ✓ — टीम को सूचना भेज दी गई है',
@@ -2458,6 +2458,7 @@ let state = {
   pinPurpose: null, // 'switch' | 'change'
   notifOpen: false,
   _newDefectPhoto: null,
+  _newDefectMedia: [], // video/audio attachments — [{type,dataUrl,name,mime}]
   _newTaskOpen: false,
   _taskPopup: null, // task id currently shown as an urgent popup
   _taskCompleteOpen: null, // task id being marked done (photo/note step)
@@ -2474,6 +2475,7 @@ let state = {
   _residentFormOpen: false,
   _residentDraft: {},  // typed-but-unsaved resident complaint form values (survives re-renders)
   _residentPhotos: [],
+  _residentMedia: [], // video/audio attachments — [{type,dataUrl,name,mime}]
   _residentSubmitted: false,
   resFilter: {q:''},
   _rateOpen: null,     // defect id whose star-rating is being picked
@@ -4505,6 +4507,7 @@ function openIssuePopup(stableId, label, location, writeBack){
     priority: meta.priority || (isRecurringLocation(location) ? bumpPriority(basePriority) : basePriority),
     tags: (meta.tags || (writeBack && writeBack.type==='section' ? (draft.sectionData[writeBack.key][writeBack.ii].tags||[]) : [])).slice(),
     photos: (meta.photos || (meta.photo ? [meta.photo] : [])).slice(),
+    media: (meta.media || []).slice(),
     assignedTo: meta.assignedTo || ''
   };
   const _ac={label:label,location:location,observation:state._issueDraft.observation,
@@ -4536,7 +4539,7 @@ function saveIssuePopup(){
   }
   draft.defectMeta[p.stableId] = {
     observation: d.observation, priority: d.priority, tags: d.tags.slice(),
-    photos: d.photos.slice(), photo: d.photos[0] || null,
+    photos: d.photos.slice(), photo: d.photos[0] || null, media: (d.media||[]).slice(),
     assignedTo: d.assignedTo || autoAssignFor(d.tags)
   };
   if(p.writeBack && p.writeBack.type==='section'){
@@ -4582,6 +4585,17 @@ function attachIssuePhoto(input){
   }).catch(()=>showToast('Could not read photo'));
 }
 function removeIssuePhoto(i){ issueSnapshotObs(); state._issueDraft.photos.splice(i,1); render(); }
+function attachIssueVideo(input){
+  if(state._issueDraft.media.length>=3){ showToast('Maximum 3 video/audio files per issue'); return; }
+  issueSnapshotObs();
+  readMediaFile(input, 'video', m=>{ state._issueDraft.media.push(m); render(); showToast('Video attached'); });
+}
+function attachIssueAudio(input){
+  if(state._issueDraft.media.length>=3){ showToast('Maximum 3 video/audio files per issue'); return; }
+  issueSnapshotObs();
+  readMediaFile(input, 'audio', m=>{ state._issueDraft.media.push(m); render(); showToast('Audio attached'); });
+}
+function removeIssueMedia(i){ issueSnapshotObs(); state._issueDraft.media.splice(i,1); render(); }
 
 async function analyzePhotoWithClaude(dataUrl){
   const apiKey=CLAUDE_API_KEY;
@@ -4629,6 +4643,10 @@ function issuePopupModal(){
     + '<div class="photo-row" style="margin-bottom:10px;">'
       + d.photos.map((ph,idx)=>'<span style="position:relative;display:inline-block;"><img class="photo-thumb" src="'+ph+'" style="width:72px;height:72px;"><button type="button" class="lightbox-close" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;font-size:11px;background:var(--danger);" onclick="removeIssuePhoto('+idx+')">x</button></span>').join('')
       + (d.photos.length<3 ? '<label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:72px;height:72px;border-radius:14px;border:2px dashed '+(hasKey?'var(--brand)':'var(--border)')+';background:'+(hasKey?'var(--brand-tint)':'var(--surface-2)')+';cursor:pointer;color:'+(hasKey?'var(--brand)':'var(--ink-soft)')+';font-size:11px;font-weight:700;text-align:center;">'+icon('camera',24)+(d.photos.length===0?'<span>Photo lo</span>':'')+' <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="attachIssuePhoto(this)"></label>' : '')
+    + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;margin-bottom:10px;">'
+      + videoAudioChipsHtml(d.media, 'removeIssueMedia')
+      + (d.media.length<3 ? videoAudioAddButtonsHtml('attachIssueVideo','attachIssueAudio') : '')
     + '</div>'
     + aiBox
     + '<div class="field" style="margin-bottom:10px;"><textarea id="ipObs" placeholder="Description (optional - AI bhar dega)" style="min-height:60px;" oninput="issueSnapshotObs()">'+esc(d.observation)+'</textarea></div>'
@@ -4815,6 +4833,10 @@ function viewReview(){
               + pd.photos.map((ph,i)=>'<span style="position:relative; display:inline-block;"><img class="photo-thumb" src="'+ph+'"><button type="button" class="lightbox-close" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; font-size:11px; background:var(--danger); box-shadow:0 1px 4px rgba(0,0,0,.3);" onclick="removeReviewPhoto(\''+pd.stableId+'\','+i+')">✕</button></span>').join('')
               + (pd.photos.length<3 ? '<label class="photo-add-btn" style="'+(pd.priority==='high'&&!pd.photos.length?'border-color:var(--danger); color:var(--danger);':'')+'">'+icon('camera',15)+(pd.priority==='high'&&!pd.photos.length ? ' Add photo (required)' : (pd.photos.length? ' Add more' : ' Add photo (optional)'))+'<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="attachReviewPhoto(\''+pd.stableId+'\',this)"></label>' : '')
             +'</div>'
+          + '<div style="display:flex; flex-wrap:wrap; margin-top:6px;">'
+              + videoAudioChipsHtml(pd.media, 'removeReviewMedia', pd.stableId)
+              + (pd.media.length<3 ? videoAudioAddButtonsHtml('attachReviewVideo','attachReviewAudio', pd.stableId) : '')
+            +'</div>'
           + '</div>'
         ).join('')
       + '</div>' : '')
@@ -4854,7 +4876,7 @@ function gatherFlaggedDefects(draft){
     out.push({
       stableId, location, recurring,
       observation: obsText || 'Marked not OK during inspection.',
-      priority, tags, photos, photo: photos[0] || null,
+      priority, tags, photos, photo: photos[0] || null, media: (m.media||[]).slice(),
       assignedTo: m.assignedTo || autoAssignFor(tags)
     });
   }
@@ -4900,6 +4922,35 @@ function removeReviewPhoto(stableId, idx){
   const cur = found ? found.photos.slice() : [];
   cur.splice(idx,1);
   setDefectMeta(stableId, {photos: cur, photo: cur[0]||null});
+  render();
+}
+function attachReviewVideo(stableId, input){
+  const found = gatherFlaggedDefects(state.draft).find(x=>x.stableId===stableId);
+  const cur = found ? found.media.slice() : [];
+  if(cur.length >= 3){ showToast('Maximum 3 video/audio files per issue'); return; }
+  readMediaFile(input, 'video', m=>{
+    cur.push(m);
+    setDefectMeta(stableId, {media: cur});
+    render();
+    showToast('Video attached');
+  });
+}
+function attachReviewAudio(stableId, input){
+  const found = gatherFlaggedDefects(state.draft).find(x=>x.stableId===stableId);
+  const cur = found ? found.media.slice() : [];
+  if(cur.length >= 3){ showToast('Maximum 3 video/audio files per issue'); return; }
+  readMediaFile(input, 'audio', m=>{
+    cur.push(m);
+    setDefectMeta(stableId, {media: cur});
+    render();
+    showToast('Audio attached');
+  });
+}
+function removeReviewMedia(stableId, idx){
+  const found = gatherFlaggedDefects(state.draft).find(x=>x.stableId===stableId);
+  const cur = found ? found.media.slice() : [];
+  cur.splice(idx,1);
+  setDefectMeta(stableId, {media: cur});
   render();
 }
 function compressImage(file, maxWidth, quality){
@@ -4958,6 +5009,7 @@ async function submitInspection(){
       id: uid('def'), sourceRecordId: draft.id, formType: draft.formType, tower: draft.tower,
       location: fd.location, observation: fd.observation, priority: fd.priority,
       tags: fd.tags || [], photo: fd.photo || null, photos: fd.photos || [], resolutionPhoto:null, resolutionNote:null,
+      media: fd.media || [],
       assignedTo: fd.assignedTo || '', targetDate: '', status: 'open', createdAt: new Date().toISOString(), closedAt: null,
       source: 'inspection', resolvedBy: null, rating: null, review: null, ratedAt: null
     };
@@ -5194,6 +5246,7 @@ function defectCard(def){
     + (otherTags.length? '<div class="tag-row">'+otherTags.map(t=>'<span class="tag-chip active" style="cursor:default;">'+esc(t)+'</span>').join('')+'</div>':'')
     + (def.resolutionPhoto ? '<div class="ba-pair"><div class="ba-item"><img src="'+(def.photo||'')+'"><span>Before</span></div><div class="ba-item"><img src="'+def.resolutionPhoto+'"><span>After</span></div></div>'+((def.photos&&def.photos.length>1)? '<div class="photo-row" style="flex-wrap:wrap;">'+def.photos.slice(1).map(ph=>'<img class="photo-thumb" src="'+ph+'">').join('')+'</div>' : '')
         : ((def.photos&&def.photos.length) ? '<div class="photo-row" style="flex-wrap:wrap;">'+def.photos.map(ph=>'<img class="photo-thumb" src="'+ph+'">').join('')+'</div>' : (def.photo ? '<div class="photo-row"><img class="photo-thumb" src="'+def.photo+'"></div>' : '')))
+    + mediaPlaybackHtml(def.media)
     + (def.status==='closed' && def.closedAt ? '<div class="defect-meta" style="margin-top:6px; color:var(--ok); font-weight:600;">'+icon('check',12)+' Resolved '+fmtDateTime(def.closedAt)+resolutionDurationText(def)+(def.resolvedBy? ' · by '+esc(def.resolvedBy) : '')+'</div>'+(def.resolutionNote? '<div class="defect-meta" style="margin-top:2px;">Fix: '+esc(def.resolutionNote)+'</div>' : '') : '')
     + (def.rating ? '<div class="defect-meta" style="margin-top:4px; color:var(--warn); font-weight:600;">'+starsHtml(def.rating)+' '+def.rating+'/5 by resident'+(def.review? ' — “'+esc(def.review)+'”' : '')+'</div>' : '')
     + '<div class="defect-foot"><div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span class="pill '+def.status+'">'+T(statusLabelKey[def.status])+'</span><span class="age-badge">'+age+'d open</span>'+(countdown?'<span class="age-badge" style="color:'+(breach||overdue?'var(--danger)':'var(--ink-soft)')+';">'+countdown+'</span>':'')+'</div>'
@@ -5407,12 +5460,21 @@ function viewDefects(){
     + (list.length? list.map(defectCard).join('') : '<div class="empty card"><div class="empty-icon">'+icon('check',28)+'</div><div class="empty-title">Nothing here</div><div class="empty-sub">No defects match this filter.</div></div>')
     + '</div>';
 }
-function openNewDefect(){ state._newDefectOpen = true; state._newDefectPhoto = null; render(); }
+function openNewDefect(){ state._newDefectOpen = true; state._newDefectPhoto = null; state._newDefectMedia = []; render(); }
 function attachNewDefectPhoto(input){
   const file = input.files && input.files[0];
   if(!file) return;
   compressImage(file, 480, 0.6).then(dataUrl=>{ state._newDefectPhoto = dataUrl; render(); }).catch(()=> showToast('Could not read photo'));
 }
+function attachNewDefectVideo(input){
+  if(state._newDefectMedia.length>=3){ showToast('Maximum 3 video/audio files'); return; }
+  readMediaFile(input, 'video', m=>{ state._newDefectMedia.push(m); render(); showToast('Video attached'); });
+}
+function attachNewDefectAudio(input){
+  if(state._newDefectMedia.length>=3){ showToast('Maximum 3 video/audio files'); return; }
+  readMediaFile(input, 'audio', m=>{ state._newDefectMedia.push(m); render(); showToast('Audio attached'); });
+}
+function removeNewDefectMedia(i){ state._newDefectMedia.splice(i,1); render(); }
 async function saveNewDefect(){
   const loc = document.getElementById('ndLoc').value.trim();
   if(!loc){ showToast('Location is required'); return; }
@@ -5429,6 +5491,7 @@ async function saveNewDefect(){
     location: loc, observation,
     priority, assignedTo: document.getElementById('ndAssign').value || ai.assignee || '',
     tags, photo: state._newDefectPhoto, resolutionPhoto:null, resolutionNote:null,
+    media: state._newDefectMedia.slice(),
     targetDate:'', status:'open', createdAt:new Date().toISOString(), closedAt:null
   };
   const ok = await storeSet('defect:'+defect.id, defect);
@@ -5568,6 +5631,10 @@ function newDefectModal(){
     + '<div class="field"><label class="field-label">Tower</label><select id="ndTower">'+TOWERS.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'
     + '<div class="field"><label class="field-label">Assigned To</label><input type="text" id="ndAssign" placeholder="Optional"></div>'
     + '<div class="field"><label class="field-label">Photo</label><div class="photo-row">'+(state._newDefectPhoto? '<img class="photo-thumb" src="'+state._newDefectPhoto+'"><button type="button" class="btn btn-sm btn-ghost" onclick="state._newDefectPhoto=null; render();">Remove</button>' : '<label class="photo-add-btn">'+icon('camera',15)+' Add photo (optional)<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="attachNewDefectPhoto(this)"></label>')+'</div></div>'
+    + '<div class="field"><label class="field-label">Video / Audio (optional)</label><div style="display:flex;flex-wrap:wrap;">'
+        + videoAudioChipsHtml(state._newDefectMedia, 'removeNewDefectMedia')
+        + (state._newDefectMedia.length<3 ? videoAudioAddButtonsHtml('attachNewDefectVideo','attachNewDefectAudio') : '')
+      +'</div></div>'
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveNewDefect()">Save</button></div>'
     + '</div></div>';
 }
@@ -6303,6 +6370,7 @@ function openResidentForm(){
 function closeResidentForm(){
   state._residentFormOpen = false;
   state._residentPhotos = [];
+  state._residentMedia = [];
   state._residentDraft = {};
   render();
 }
@@ -6313,6 +6381,17 @@ function attachResidentPhoto(input){
   compressImage(file, 480, 0.6).then(dataUrl=>{ state._residentPhotos.push(dataUrl); render(); }).catch(()=> showToast('Could not read photo'));
 }
 function removeResidentPhoto(i){ snapshotResidentForm(); state._residentPhotos.splice(i,1); render(); }
+function attachResidentVideo(input){
+  if(state._residentMedia.length >= 3){ showToast('Maximum 3 video/audio files'); return; }
+  snapshotResidentForm();
+  readMediaFile(input, 'video', m=>{ state._residentMedia.push(m); render(); showToast('Video attached'); });
+}
+function attachResidentAudio(input){
+  if(state._residentMedia.length >= 3){ showToast('Maximum 3 video/audio files'); return; }
+  snapshotResidentForm();
+  readMediaFile(input, 'audio', m=>{ state._residentMedia.push(m); render(); showToast('Audio attached'); });
+}
+function removeResidentMedia(i){ snapshotResidentForm(); state._residentMedia.splice(i,1); render(); }
 const handleResSearch = debounce(function(val){ state.resFilter.q = val; render(); }, 250);
 async function saveResidentComplaint(){
   snapshotResidentForm();
@@ -6360,6 +6439,7 @@ async function doSaveResidentComplaint(){
     observation: observationText,
     priority: ai.priority, tags: aiUnique(['Resident Complaint'].concat(ai.tags)),
     photo: state._residentPhotos[0] || null, photos: state._residentPhotos.slice(), resolutionPhoto: null, resolutionNote: null,
+    media: state._residentMedia.slice(),
     assignedTo: d.rcAssign || ai.assignee || autoAssignFor(['Resident Complaint']) || '', targetDate: '',
     status: 'open', createdAt: new Date().toISOString(), closedAt: null,
     resolvedBy: null, rating: null, review: null, ratedAt: null
@@ -6373,6 +6453,7 @@ async function doSaveResidentComplaint(){
     state._residentSubmitted = true;
     state._residentFormOpen = false;
     state._residentPhotos = [];
+    state._residentMedia = [];
     state._residentDraft = {};
     render();
     setTimeout(()=>{ try{ window.close(); }catch(e){} }, 1200);
@@ -6431,6 +6512,7 @@ function residentComplaintCard(c){
     + (c.assignedTo? '<div class="defect-meta" style="margin-top:4px;">'+icon('users',10)+' Assigned to '+esc(c.assignedTo)+'</div>':'')
     + (c.resolutionPhoto ? '<div class="ba-pair"><div class="ba-item"><img src="'+(c.photo||'')+'"><span>Before</span></div><div class="ba-item"><img src="'+c.resolutionPhoto+'"><span>After</span></div></div>'
         : ((c.photos&&c.photos.length) ? '<div class="photo-row" style="flex-wrap:wrap;">'+c.photos.map(ph=>'<img class="photo-thumb" src="'+ph+'">').join('')+'</div>' : (c.photo ? '<div class="photo-row"><img class="photo-thumb" src="'+c.photo+'"></div>' : '')))
+    + mediaPlaybackHtml(c.media)
     + (c.status==='closed' && c.closedAt ? '<div class="defect-meta" style="margin-top:6px; color:var(--ok); font-weight:600;">'+icon('check',12)+' Resolved '+fmtDateTime(c.closedAt)+resolutionDurationText(c)+(c.resolvedBy? ' · by '+esc(c.resolvedBy):'')+'</div>'+(c.resolutionNote? '<div class="defect-meta" style="margin-top:2px;">Fix: '+esc(c.resolutionNote)+'</div>':'') : '')
     + (c.rating ? '<div class="defect-meta" style="margin-top:6px; color:var(--warn); font-weight:700; font-size:13px;">'+starsHtml(c.rating)+' '+c.rating+'/5'+(c.review? '<div style="font-weight:400; color:var(--ink-soft); margin-top:2px;">“'+esc(c.review)+'”</div>':'')+'</div>'
         : (c.status==='closed' ? residentRatingWidget(c) : ''))
@@ -6449,6 +6531,10 @@ function residentFormCard(){
     + '<div class="field"><label class="field-label">'+T('lbl_photos')+' ('+state._residentPhotos.length+'/3)</label><div class="photo-row" style="flex-wrap:wrap;">'
         + state._residentPhotos.map((ph,i)=>'<span style="position:relative; display:inline-block;"><img class="photo-thumb" src="'+ph+'"><button type="button" class="lightbox-close" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; font-size:11px; background:var(--danger); box-shadow:0 1px 4px rgba(0,0,0,.3);" onclick="removeResidentPhoto('+i+')">✕</button></span>').join('')
         + (state._residentPhotos.length<3 ? '<label class="photo-add-btn">'+icon('camera',15)+' '+(state._residentPhotos.length? T('btn_add_more_photo') : T('btn_take_photo'))+'<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="attachResidentPhoto(this)"></label>' : '')
+      +'</div></div>'
+    + '<div class="field"><label class="field-label">Video / Audio ('+state._residentMedia.length+'/3, optional)</label><div style="display:flex;flex-wrap:wrap;">'
+        + videoAudioChipsHtml(state._residentMedia, 'removeResidentMedia')
+        + (state._residentMedia.length<3 ? videoAudioAddButtonsHtml('attachResidentVideo','attachResidentAudio') : '')
       +'</div></div>'
     + (sup.length && !state.residentMode ? '<div class="field"><label class="field-label">'+T('rc_sendto')+'</label><select id="rcAssign" onchange="state._residentDraft.rcAssign=this.value"><option value="">'+T('rc_society_assign')+'</option>'+sup.map(m=>'<option value="'+esc(m.name)+'" '+(d.rcAssign===m.name?'selected':'')+'>'+esc(m.name)+'</option>').join('')+'</select></div>' : '')
     + '<div class="btn-row">'+(state.residentMode ? '' : '<button class="btn btn-ghost" onclick="closeResidentForm()">'+T('btn_cancel')+'</button>')+'<button class="btn btn-primary" onclick="saveResidentComplaint()">'+icon('check',15)+' '+T('rc_submit')+'</button></div>'
@@ -6844,6 +6930,60 @@ function sosDetailModal(s){
 }
 function openNewSos(){ state._newSosOpen = true; state._sosKind = 'general'; render(); }
 function setSosKind(k){ state._sosKind = k; render(); }
+/* =========================================================
+   SHARED VIDEO/AUDIO RECORDING WIDGET — reused by the resident
+   complaint form, Issue Popup, and New Defect form. Photos in each of
+   those forms keep their own existing thumbnail handling untouched;
+   this only covers video/audio, which look and behave identically
+   everywhere (same native-capture approach as the SOS picker above).
+========================================================= */
+function readMediaFile(input, type, onLoaded){
+  const files = input.files;
+  if(!files || !files.length) return;
+  const file = files[0];
+  const reader = new FileReader();
+  reader.onload = function(e){ onLoaded({type:type, dataUrl:e.target.result, name:file.name, mime:file.type}); };
+  reader.onerror = ()=>showToast('Could not read file');
+  reader.readAsDataURL(file);
+}
+function videoAudioChipsHtml(items, removeFnName, extraArg){
+  const argPrefix = extraArg!==undefined ? ("'"+extraArg+"',") : '';
+  return (items||[]).map((m,i)=>{
+    if(m.type==='video'){
+      return '<span style="position:relative;display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin:4px;">'
+           +'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>'
+           +'<span style="font-size:11px;color:var(--ink-soft);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(m.name)+'</span>'
+           +'<button type="button" onclick="'+removeFnName+'('+argPrefix+i+')" style="margin-left:4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">x</button>'
+           +'</span>';
+    }
+    return '<span style="position:relative;display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin:4px;">'
+         +'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>'
+         +'<span style="font-size:11px;color:var(--ink-soft);">Voice note</span>'
+         +'<button type="button" onclick="'+removeFnName+'('+argPrefix+i+')" style="margin-left:4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;">x</button>'
+         +'</span>';
+  }).join('');
+}
+function videoAudioAddButtonsHtml(videoAttachFnName, audioAttachFnName, extraArg){
+  const argPrefix = extraArg!==undefined ? ("'"+extraArg+"',") : '';
+  return '<label style="display:flex;align-items:center;gap:5px;background:var(--surface-2);border:1.5px dashed var(--border);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:700;color:var(--ink-soft);">'
+        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>'
+        + ' Video<input type="file" accept="video/*" capture="environment" style="display:none;" onchange="'+videoAttachFnName+'('+argPrefix+'this)"></label>'
+        + '<label style="display:flex;align-items:center;gap:5px;background:var(--surface-2);border:1.5px dashed var(--border);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:12px;font-weight:700;color:var(--ink-soft);">'
+        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>'
+        + ' Audio<input type="file" accept="audio/*" capture="microphone" style="display:none;" onchange="'+audioAttachFnName+'('+argPrefix+'this)"></label>';
+}
+/* Read-only playback for viewing an already-saved defect/complaint —
+   actual <video>/<audio> players, not just a filename chip, so an
+   admin or supervisor can play back what was recorded. */
+function mediaPlaybackHtml(items){
+  if(!items || !items.length) return '';
+  return '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">' + items.map(m=>{
+    if(m.type==='video'){
+      return '<video src="'+m.dataUrl+'" controls preload="metadata" style="max-width:220px;max-height:160px;border-radius:10px;border:1px solid var(--border);display:block;"></video>';
+    }
+    return '<audio src="'+m.dataUrl+'" controls preload="metadata" style="height:36px;max-width:240px;"></audio>';
+  }).join('') + '</div>';
+}
 function attachSosMedia(input, type){
   const files = input.files;
   if(!files || !files.length) return;
