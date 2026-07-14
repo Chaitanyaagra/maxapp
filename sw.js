@@ -1,4 +1,4 @@
-const C='mhm-v17',R='mhm-r17';
+const C='mhm-v20',R='mhm-r20';
 const PRE=['./','./index.html','./manifest.json','./icon-192.png','./back-button-handler.js'];
 const CDN=['cdnjs.cloudflare.com','fonts.googleapis.com','fonts.gstatic.com','www.gstatic.com'];
 const SKIP=['firestore.googleapis.com','firebase.googleapis.com','identitytoolkit.googleapis.com','securetoken.googleapis.com'];

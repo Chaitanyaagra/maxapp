@@ -2043,28 +2043,16 @@ const CRITICAL_ITEMS = new Set([
 function isCritical(label){ return CRITICAL_ITEMS.has(label); }
 
 /* =========================================================
-   OWNER / TEAM-MANAGEMENT PERMISSION — only this mobile number
-   (or a member this number has explicitly delegated to via the
-   "Can manage team members" toggle) can add/edit/remove Team
-   Members or change who else has that right. This is a UI-level
-   gate only — same convenience-not-security caveat as the PIN
-   system elsewhere in this app; anyone with browser devtools can
-   bypass it. It exists to stop casual admins from freely creating
-   other admins, not to withstand a determined attacker.
-
-   Bootstrap exception: before any admin member exists at all,
-   any unlocked admin can add the first one (so the very first
-   setup — presumably by 9587370773 — is possible without a
-   chicken-and-egg problem).
+   TEAM-MANAGEMENT PERMISSION — any unlocked admin can add, edit
+   or remove Team Members (admins & supervisors). This matches
+   every other admin-gated feature in this app (vendors, SOS,
+   tasks): the shared Admin PIN is the access control. Same
+   convenience-not-security caveat as the PIN system elsewhere —
+   anyone with browser devtools can bypass it.
 ========================================================= */
-const OWNER_MOBILE = '9587370773';
 function canManageTeam(){
-  const noAdminsYet = DB.members.filter(m=>m.role==='admin').length===0;
-  if(noAdminsYet) return true;
-  if(!state.currentUser) return false;
-  return state.currentUser.mobile===OWNER_MOBILE || !!state.currentUser.canManageMembers;
+  return state.role==='admin' && state.adminUnlocked;
 }
-function isOwner(){ return !!(state.currentUser && state.currentUser.mobile===OWNER_MOBILE); }
 
 /* =========================================================
    AD-HOC TASKS — one-off jobs an admin hands a supervisor that
@@ -2377,7 +2365,7 @@ const STR = {
     ip_title:"What's the problem here?", ip_describe:'Describe the issue', ip_placeholder:"What's wrong? e.g. Tube light not working near lift", ip_priority:'Priority', ip_assign:'Assign supervisor', ip_assign_later:'— Assign later —', ip_tags:'Tags', ip_skip:'Skip for now', ip_save:'Save issue',
     lbl_photos:'Photos', btn_take_photo:'Take / add photo', btn_add_more_photo:'Add more',
     res_title:'Resident Complaints', res_sub:'Raise a complaint, track it, and rate the resolution', res_total:'Total complaints', res_open:'Open', res_avg:'Avg rating', btn_raise_complaint:'Raise a Complaint', res_search_ph:'Search by flat, name or location…',
-    rc_name:'Your Name', rc_mobile:'Mobile (optional)', rc_flat:'Flat No.', rc_tower:'Tower', rc_problem:"What's the problem?", rc_problem_ph:'e.g. Water leakage near the lift, 4th floor', rc_sendto:'Send to (optional)', rc_submit:'Submit complaint', rc_society_assign:'— Society will assign —',
+    rc_name:'Your Name', rc_mobile:'Mobile *', rc_flat:'Flat No.', rc_tower:'Tower', rc_problem:"What's the problem?", rc_problem_ph:'e.g. Water leakage near the lift, 4th floor', rc_sendto:'Send to (optional)', rc_submit:'Submit complaint', rc_society_assign:'— Society will assign —',
     rate_q:'How was the resolution? Rate it:', rate_review_ph:'Write a short review (optional)', rate_submit:'Submit rating', rate_thanks:'Thank you for your feedback 🙏',
     res_empty_title:'No complaints yet', res_empty_sub:'Residents can raise a complaint with a photo — it goes straight to the maintenance team.',
     toast_enter_name:'Please enter your name', toast_enter_flat:'Please enter your flat number (e.g. A-1203)', toast_enter_problem:'Please describe the problem or its location', toast_complaint_done:'Complaint submitted ✓ — the team has been notified',
@@ -2414,7 +2402,7 @@ const STR = {
     ip_title:'यहाँ क्या समस्या है?', ip_describe:'समस्या बताएँ', ip_placeholder:'क्या खराबी है? जैसे — लिफ्ट के पास ट्यूबलाइट नहीं जल रही', ip_priority:'प्राथमिकता', ip_assign:'सुपरवाइज़र चुनें', ip_assign_later:'— बाद में तय करें —', ip_tags:'टैग', ip_skip:'अभी छोड़ें', ip_save:'समस्या सहेजें',
     lbl_photos:'फ़ोटो', btn_take_photo:'फ़ोटो लें / जोड़ें', btn_add_more_photo:'और जोड़ें',
     res_title:'निवासी शिकायतें', res_sub:'शिकायत दर्ज करें, स्थिति देखें और समाधान को रेट करें', res_total:'कुल शिकायतें', res_open:'खुली', res_avg:'औसत रेटिंग', btn_raise_complaint:'शिकायत दर्ज करें', res_search_ph:'फ्लैट, नाम या जगह से खोजें…',
-    rc_name:'आपका नाम', rc_mobile:'मोबाइल (वैकल्पिक)', rc_flat:'फ्लैट नं.', rc_tower:'टावर', rc_problem:'समस्या क्या है?', rc_problem_ph:'जैसे — लिफ्ट के पास पानी का रिसाव, चौथी मंज़िल', rc_sendto:'किसे भेजें (वैकल्पिक)', rc_submit:'शिकायत भेजें', rc_society_assign:'— सोसाइटी तय करेगी —',
+    rc_name:'आपका नाम', rc_mobile:'मोबाइल *', rc_flat:'फ्लैट नं.', rc_tower:'टावर', rc_problem:'समस्या क्या है?', rc_problem_ph:'जैसे — लिफ्ट के पास पानी का रिसाव, चौथी मंज़िल', rc_sendto:'किसे भेजें (वैकल्पिक)', rc_submit:'शिकायत भेजें', rc_society_assign:'— सोसाइटी तय करेगी —',
     rate_q:'समाधान कैसा रहा? रेटिंग दें:', rate_review_ph:'छोटा रिव्यू लिखें (वैकल्पिक)', rate_submit:'रेटिंग भेजें', rate_thanks:'आपकी फ़ीडबैक के लिए धन्यवाद 🙏',
     res_empty_title:'अभी कोई शिकायत नहीं', res_empty_sub:'निवासी फ़ोटो के साथ शिकायत दर्ज कर सकते हैं — यह सीधे मेंटेनेंस टीम तक पहुँचती है।',
     toast_enter_name:'कृपया अपना नाम लिखें', toast_enter_flat:'कृपया फ्लैट नंबर लिखें (जैसे A-1203)', toast_enter_problem:'कृपया समस्या या उसकी जगह बताएँ', toast_complaint_done:'शिकायत दर्ज हो गई ✓ — टीम को सूचना भेज दी गई है',
@@ -2469,9 +2457,7 @@ let state = {
   showPinModal: false,
   pinPurpose: null, // 'switch' | 'change'
   notifOpen: false,
-  _newDefectTags: [],
   _newDefectPhoto: null,
-  _newDefectAi: null,
   _newTaskOpen: false,
   _taskPopup: null, // task id currently shown as an urgent popup
   _taskCompleteOpen: null, // task id being marked done (photo/note step)
@@ -3213,24 +3199,17 @@ async function saveMember(){
   const name = (document.getElementById('memName')||{}).value?.trim();
   if(!name){ showToast('Please enter a name'); return; }
   const mobile = (document.getElementById('memMobile')||{}).value?.trim() || '';
-  if(mobile && !/^\d{10}$/.test(mobile)){ showToast('Mobile must be exactly 10 digits, or left blank'); return; }
+  if(!/^\d{10}$/.test(mobile)){ showToast('Mobile number is required and must be exactly 10 digits'); return; }
   const role = (document.getElementById('memRole')||{}).value || 'supervisor';
   const pin = (document.getElementById('memPin')||{}).value?.trim() || '';
   if(pin && pin.length<4){ showToast('PIN must be at least 4 digits, or left blank'); return; }
-  // Only the Owner (matched by OWNER_MOBILE) can grant or revoke another
-  // admin's right to manage team members — a delegated admin can't
-  // re-delegate or promote themselves further.
-  const canManageCheckbox = document.getElementById('memCanManage');
-  const canManageMembers = isOwner() && canManageCheckbox ? canManageCheckbox.checked : undefined;
   let member, isNew = false;
   if(editingId){
     member = DB.members.find(x=>x.id===editingId);
     if(!member) return;
     member.name=name; member.mobile=mobile; member.role=role; member.pin=pin;
-    if(canManageMembers!==undefined) member.canManageMembers = canManageMembers;
   } else {
     member = {id: uid('member'), name, mobile, role, pin, active:true, createdAt:new Date().toISOString()};
-    if(canManageMembers!==undefined) member.canManageMembers = canManageMembers;
     isNew = true;
   }
   const ok = await storeSet('member:'+member.id, member);
@@ -3423,7 +3402,6 @@ async function init(){
   if(SYNC_QUEUE.length) flushSyncQueue();
   window.addEventListener('online', ()=>{ flushSyncQueue().then(n=>{ if(n && !state.residentMode) refreshData(false); }); });
   loadExternalLibs();
-  if(window.backButtonHandler) window.backButtonHandler.navigateTo(state.residentMode?'residents':'home');
   __appRendered = true;
   state._isNavigating = true;
   render();
@@ -3669,14 +3647,9 @@ function goto(view, extra){
   state.view = view;
   state._isNavigating = true;
   if(extra) Object.assign(state, extra);
-  if(window.backButtonHandler) window.backButtonHandler.navigateTo(view);
   render();
   window.scrollTo(0,0);
 }
-window.addEventListener('pageChanged', function(e){
-  var pg = e.detail && e.detail.page;
-  if(pg && pg !== state.view){ state.view = pg; state._isNavigating = true; render(); window.scrollTo(0,0); }
-});
 
 // Generic debounce helper — used so text inputs (search boxes) don't
 // force a full re-render on every keystroke.
@@ -4513,69 +4486,6 @@ function aiAnalyzeIssue(ctx){
   const whatsapp = 'Max Heights Majestic - issue reported\nLocation: '+(ctx.location||'Not specified')+'\nPriority: '+priority.toUpperCase()+'\nTags: '+tags.join(', ')+'\nAction: '+action;
   return {priority, tags, vendor, action, assignee, observation:cleanObservation, whatsapp};
 }
-function aiAdviceHtml(a){
-  return '<div class="ai-line"><b>Priority:</b> '+esc(a.priority.toUpperCase())+'</div>'
-    + '<div class="ai-line"><b>Vendor/team:</b> '+esc(a.vendor)+(a.assignee?' · '+esc(a.assignee):'')+'</div>'
-    + '<div class="ai-line"><b>Suggested action:</b> '+esc(a.action)+'</div>'
-    + '<div class="ai-chip-row">'+a.tags.map(t=>'<span class="ai-mini-chip">'+esc(t)+'</span>').join('')+'</div>';
-}
-function aiAssistCard(target){
-  const isIssue = target==='issue';
-  const resultId = isIssue ? 'issueAiResult' : 'newDefectAiResult';
-  const click = isIssue ? 'runIssueAiAssist()' : 'runNewDefectAiAssist()';
-  return '<div class="ai-assist-card">'
-    + '<div class="ai-assist-head"><div class="ai-assist-title">'+icon('spark',14)+' Smart AI Assist</div><button type="button" class="btn btn-sm btn-accent" style="width:auto; min-height:36px;" onclick="'+click+'">Analyze</button></div>'
-    + '<div class="ai-assist-note">Works offline without extension/API. Suggests priority, tags, vendor/team and action from your text/photo context.</div>'
-    + '<div id="'+resultId+'" class="ai-result"></div>'
-    + '</div>';
-}
-function showAiResult(id, advice){
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.className = 'ai-result show';
-  el.innerHTML = aiAdviceHtml(advice);
-}
-function syncIssueAiToDraft(advice){
-  if(!state._issueDraft) return;
-  state._issueDraft.observation = advice.observation;
-  state._issueDraft.priority = advice.priority;
-  state._issueDraft.tags = aiUnique((state._issueDraft.tags||[]).concat(advice.tags));
-  if(advice.assignee) state._issueDraft.assignedTo = advice.assignee;
-}
-function runIssueAiAssist(){
-  const p = state._issuePopup, d = state._issueDraft;
-  if(!p || !d) return;
-  issueSnapshotObs();
-  const advice = aiAnalyzeIssue({label:p.label, location:p.location, observation:d.observation, priority:d.priority, existingTags:d.tags, assignedTo:d.assignedTo, hasPhoto:d.photos && d.photos.length});
-  state._issueAi = advice;
-  syncIssueAiToDraft(advice);
-  render();
-  setTimeout(()=>showAiResult('issueAiResult', advice), 0);
-  showToast('AI suggestions applied');
-}
-function collectNewDefectAiContext(){
-  return {
-    label:'Manual defect',
-    location:(document.getElementById('ndLoc')||{}).value || '',
-    observation:(document.getElementById('ndObs')||{}).value || '',
-    priority:(document.getElementById('ndPriority')||{}).value || 'medium',
-    existingTags:state._newDefectTags || [],
-    assignedTo:(document.getElementById('ndAssign')||{}).value || '',
-    hasPhoto:!!state._newDefectPhoto
-  };
-}
-function runNewDefectAiAssist(){
-  const ctx = collectNewDefectAiContext();
-  if(!ctx.location && !ctx.observation){ showToast('Add location or observation first'); return; }
-  const advice = aiAnalyzeIssue(ctx);
-  state._newDefectAi = advice;
-  const obs = document.getElementById('ndObs'); if(obs && (!obs.value || obs.value.trim().length<8)) obs.value = advice.observation;
-  const pr = document.getElementById('ndPriority'); if(pr) pr.value = advice.priority;
-  const asg = document.getElementById('ndAssign'); if(asg && !asg.value && advice.assignee) asg.value = advice.assignee;
-  state._newDefectTags = aiUnique((state._newDefectTags||[]).concat(advice.tags));
-  showAiResult('newDefectAiResult', advice);
-  showToast('AI suggestions ready');
-}
 
 function openIssuePopup(stableId, label, location, writeBack){
   const draft = state.draft;
@@ -4612,9 +4522,17 @@ function saveIssuePopup(){
   const p = state._issuePopup, d = state._issueDraft, draft = state.draft;
   if(!p || !draft){ state._issuePopup=null; state._issueDraft=null; render(); return; }
   issueSnapshotObs();
+  // Final auto-analysis against whatever was actually typed/photographed —
+  // this is the only place priority/tags get decided; there's no manual
+  // picker for the person filling the form to press or fiddle with.
+  const finalAi = aiAnalyzeIssue({label:p.label, location:p.location, observation:d.observation, hasPhoto:(d.photos&&d.photos.length>0)});
+  d.tags = finalAi.tags.slice();
+  d.priority = isCritical(p.label) ? 'high' : finalAi.priority;
+  if(!d.assignedTo && finalAi.assignee) d.assignedTo = finalAi.assignee;
   /* Auto-tag Recurring if same location had issues before */
   if(p.location && isRecurringLocation(p.location) && !d.tags.includes('Recurring')){
     d.tags = ['Recurring',...d.tags];
+    if(d.priority==='low') d.priority = 'medium';
   }
   draft.defectMeta[p.stableId] = {
     observation: d.observation, priority: d.priority, tags: d.tags.slice(),
@@ -4637,13 +4555,6 @@ function issueSuggest(){
   state._issueDraft.observation = suggestDefectText(p.label);
   const el = document.getElementById('ipObs'); if(el) el.value = state._issueDraft.observation;
 }
-function toggleIssueTag(tag){
-  issueSnapshotObs();
-  const t = state._issueDraft.tags, i = t.indexOf(tag);
-  if(i>=0) t.splice(i,1); else t.push(tag);
-  render();
-}
-function setIssuePriority(v){ state._issueDraft.priority = v; }
 function setIssueAssign(v){ state._issueDraft.assignedTo = v; }
 function attachIssuePhoto(input){
   const file=input.files&&input.files[0];if(!file)return;
@@ -4706,7 +4617,7 @@ function issuePopupModal(){
     ? '<div style="font-size:11px;color:var(--ok);font-weight:700;margin-bottom:6px;">'+icon('spark',11)+' Photo lo - AI description auto-fill karega</div>'
     : '<div style="font-size:11px;color:var(--ink-faint);margin-bottom:6px;">Settings mein Claude API key dalo - photo describe auto hoga</div>';
   const aiBox=state._issueAi
-    ? '<div style="background:var(--brand-tint);border:1px solid rgba(15,76,76,0.18);border-radius:10px;padding:8px 10px;font-size:11.5px;margin-bottom:10px;line-height:1.5;">'+icon('spark',12)+' <b style="color:var(--brand)">AI:</b> '+esc(state._issueAi.vendor)+' - '+esc((state._issueAi.tags||[]).join(', '))+'<br><span style="color:var(--ink-soft);">'+esc((state._issueAi.action||'').slice(0,90))+'</span></div>'
+    ? '<div style="background:var(--brand-tint);border:1px solid rgba(15,76,76,0.18);border-radius:10px;padding:8px 10px;font-size:11.5px;margin-bottom:10px;line-height:1.5;">'+icon('spark',12)+' <b style="color:var(--brand)">AI:</b> '+esc(state._issueAi.vendor)+'<br><span style="color:var(--ink-soft);">'+esc((state._issueAi.action||'').slice(0,90))+'</span></div>'
     : '';
   return '<div class="modal-backdrop" onclick="if(event.target===this) saveIssuePopup()"><div class="modal-sheet card">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
@@ -4714,9 +4625,6 @@ function issuePopupModal(){
       + '<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;min-height:30px;" onclick="skipIssuePopup()">Skip</button>'
     + '</div>'
     + '<p style="font-size:13px;font-weight:700;line-height:1.3;margin-bottom:10px;">'+esc(p.label)+'<br><span style="font-size:12px;font-weight:500;color:var(--ink-soft);">'+esc(p.location)+'</span></p>'
-    + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
-      + ['high','medium','low'].map(pr=>'<button onclick="state._issueDraft.priority=\''+pr+'\';render();" style="flex:1;padding:8px 0;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer;border:2px solid '+(d.priority===pr?(pr==='high'?'var(--danger)':pr==='medium'?'var(--warn)':'var(--ok)'):'var(--border)')+';background:'+(d.priority===pr?(pr==='high'?'var(--danger-tint)':pr==='medium'?'var(--warn-tint)':'var(--ok-tint)'):'transparent')+';color:'+(d.priority===pr?(pr==='high'?'var(--danger)':pr==='medium'?'var(--warn)':'var(--ok)'):'var(--ink-soft)')+';">'+(pr==='high'?'High':pr==='medium'?'Medium':'Low')+'</button>').join('')
-    + '</div>'
     + aiTip
     + '<div class="photo-row" style="margin-bottom:10px;">'
       + d.photos.map((ph,idx)=>'<span style="position:relative;display:inline-block;"><img class="photo-thumb" src="'+ph+'" style="width:72px;height:72px;"><button type="button" class="lightbox-close" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;font-size:11px;background:var(--danger);" onclick="removeIssuePhoto('+idx+')">x</button></span>').join('')
@@ -4894,22 +4802,16 @@ function viewReview(){
     + (draft.mobile && !/^\d{10}$/.test(draft.mobile) ? '<div class="banner danger">'+icon('alertTriangle',18)+'<div><b>Mobile number invalid</b>"'+esc(draft.mobile)+'" is only '+draft.mobile.length+' digit'+(draft.mobile.length!==1?'s':'')+'. Enter exactly 10 digits, or clear the field, to submit.</div></div>' : '')
     + (pendingDefects.some(pd=>pd.priority==='high' && !pd.photo) ? '<div class="banner danger">'+icon('alertTriangle',18)+'<div><b>Photo required</b>High priority issues need a photo attached before you can submit.</div></div>' : '')
     + (pendingDefects.length>0 ? '<div class="card"><span class="section-label">'+T('review_defects_to_log')+' ('+pendingDefects.length+')</span>'
-      + '<p style="font-size:11.5px; color:var(--ink-soft); margin-bottom:8px;">Tag each issue and adjust priority before submitting.</p>'
+      + '<p style="font-size:11.5px; color:var(--ink-soft); margin-bottom:8px;">'+icon('spark',11)+' Priority & tags are set automatically. Add photos or assign a supervisor if needed.</p>'
       + pendingDefects.map(pd=>
-          '<div class="defect-card priority-'+pd.priority+'" style="margin-bottom:10px;">'
+          '<div class="defect-card" style="margin-bottom:10px;">'
           + '<div class="defect-top"><div class="defect-loc">'+esc(pd.location)+'</div>'+(pd.recurring?'<span class="pill recurring">'+icon('refresh',10)+' Recurring</span>':'')+'</div>'
           + '<div class="defect-obs">'+esc(pd.observation)+'</div>'
           + (pd.recurring? '<p class="chart-fallback-note" style="margin-top:4px;">This location has had '+RECURRING_THRESHOLD+'+ issues logged in the last '+RECURRING_WINDOW_DAYS+' days — priority was bumped up automatically.</p>' : '')
-          + '<div class="two-col" style="margin-top:8px;"><div class="field" style="margin-bottom:0;"><label class="field-label">Priority</label><select onchange="setReviewPriority(\''+pd.stableId+'\',this.value)">'
-            + '<option value="high" '+(pd.priority==='high'?'selected':'')+'>High (24h)</option>'
-            + '<option value="medium" '+(pd.priority==='medium'?'selected':'')+'>Medium (3 days)</option>'
-            + '<option value="low" '+(pd.priority==='low'?'selected':'')+'>Low (7 days)</option>'
-          + '</select></div>'
-          + '<div class="field" style="margin-bottom:0;"><label class="field-label">Assign supervisor</label><select onchange="setReviewAssign(\''+pd.stableId+'\',this.value)"><option value="">— Assign later —</option>'
+          + '<div class="field" style="margin-top:8px; margin-bottom:0;"><label class="field-label">Assign supervisor</label><select onchange="setReviewAssign(\''+pd.stableId+'\',this.value)"><option value="">— Assign later —</option>'
             + assignableMembers().map(m=>'<option value="'+esc(m.name)+'" '+(pd.assignedTo===m.name?'selected':'')+'>'+esc(m.name)+'</option>').join('')
-          + '</select></div></div>'
-          + '<div class="tag-row">'+TAG_OPTIONS.map(tag=>'<button type="button" class="tag-chip '+(pd.tags.includes(tag)?'active':'')+'" onclick="toggleReviewTag(\''+pd.stableId+'\',\''+tag.replace(/'/g,"\\\\'")+'\')">'+tag+'</button>').join('')+'</div>'
-          + '<div class="photo-row" style="flex-wrap:wrap;">'
+          + '</select></div>'
+          + '<div class="photo-row" style="flex-wrap:wrap; margin-top:8px;">'
               + pd.photos.map((ph,i)=>'<span style="position:relative; display:inline-block;"><img class="photo-thumb" src="'+ph+'"><button type="button" class="lightbox-close" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; font-size:11px; background:var(--danger); box-shadow:0 1px 4px rgba(0,0,0,.3);" onclick="removeReviewPhoto(\''+pd.stableId+'\','+i+')">✕</button></span>').join('')
               + (pd.photos.length<3 ? '<label class="photo-add-btn" style="'+(pd.priority==='high'&&!pd.photos.length?'border-color:var(--danger); color:var(--danger);':'')+'">'+icon('camera',15)+(pd.priority==='high'&&!pd.photos.length ? ' Add photo (required)' : (pd.photos.length? ' Add more' : ' Add photo (optional)'))+'<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="attachReviewPhoto(\''+pd.stableId+'\',this)"></label>' : '')
             +'</div>'
@@ -4927,18 +4829,33 @@ function gatherFlaggedDefects(draft){
   function push(stableId, location, observation, baseTags, defaultPriority){
     const m = meta[stableId] || {};
     const recurring = isRecurringLocation(location);
-    const effectiveDefault = recurring ? bumpPriority(defaultPriority) : defaultPriority;
-    const effectiveTags = recurring ? Array.from(new Set([...(baseTags||[]), 'Recurring'])) : (baseTags || []);
+    const obsText = m.observation || observation || '';
     const photos = (m.photos || (m.photo ? [m.photo] : [])).slice();
-    const tags2 = m.tags || effectiveTags;
+    let priority, tags;
+    if(m.priority && m.tags){
+      // Already decided by AI when this issue was logged via the Issue Popup.
+      priority = m.priority;
+      tags = m.tags;
+    } else {
+      // Flagged without going through the Issue Popup (e.g. Skip was
+      // tapped) — AI decides from whatever text/photo is available, same
+      // as everywhere else. No manual picker here either.
+      const ai = aiAnalyzeIssue({label:location, location:location, observation:obsText, existingTags:baseTags, hasPhoto:photos.length>0});
+      priority = defaultPriority==='high' ? 'high' : ai.priority;
+      tags = ai.tags;
+    }
+    if(recurring && !tags.includes('Recurring')){
+      // Priority is already adjusted for recurring locations inside
+      // aiAnalyzeIssue() (or, for the pre-set branch, inside
+      // saveIssuePopup() at the time it was logged) — bumping again here
+      // would double-count it. Just make sure the tag is present.
+      tags = tags.concat('Recurring');
+    }
     out.push({
       stableId, location, recurring,
-      observation: m.observation || observation || 'Marked not OK during inspection.',
-      priority: m.priority || effectiveDefault,
-      tags: tags2,
-      photos: photos,
-      photo: photos[0] || null,
-      assignedTo: m.assignedTo || autoAssignFor(tags2)
+      observation: obsText || 'Marked not OK during inspection.',
+      priority, tags, photos, photo: photos[0] || null,
+      assignedTo: m.assignedTo || autoAssignFor(tags)
     });
   }
   if(draft.formType!=='daily-tower'){
@@ -4965,17 +4882,6 @@ function setDefectMeta(stableId, patch){
   const draft = state.draft;
   draft.defectMeta[stableId] = Object.assign({}, draft.defectMeta[stableId], patch);
 }
-function toggleReviewTag(stableId, tag){
-  const draft = state.draft;
-  const existing = draft.defectMeta[stableId] && draft.defectMeta[stableId].tags;
-  const found = gatherFlaggedDefects(draft).find(x=>x.stableId===stableId);
-  const cur = existing ? existing.slice() : (found ? found.tags.slice() : []);
-  const idx = cur.indexOf(tag);
-  if(idx>=0) cur.splice(idx,1); else cur.push(tag);
-  setDefectMeta(stableId, {tags: cur});
-  render();
-}
-function setReviewPriority(stableId, priority){ setDefectMeta(stableId, {priority}); render(); }
 function setReviewAssign(stableId, name){ setDefectMeta(stableId, {assignedTo:name}); }
 function attachReviewPhoto(stableId, input){
   const file = input.files && input.files[0];
@@ -5501,12 +5407,7 @@ function viewDefects(){
     + (list.length? list.map(defectCard).join('') : '<div class="empty card"><div class="empty-icon">'+icon('check',28)+'</div><div class="empty-title">Nothing here</div><div class="empty-sub">No defects match this filter.</div></div>')
     + '</div>';
 }
-function openNewDefect(){ state._newDefectOpen = true; state._newDefectTags = []; state._newDefectPhoto = null; state._newDefectAi = null; render(); }
-function toggleNewDefectTag(tag){
-  const i = state._newDefectTags.indexOf(tag);
-  if(i>=0) state._newDefectTags.splice(i,1); else state._newDefectTags.push(tag);
-  render();
-}
+function openNewDefect(){ state._newDefectOpen = true; state._newDefectPhoto = null; render(); }
 function attachNewDefectPhoto(input){
   const file = input.files && input.files[0];
   if(!file) return;
@@ -5515,14 +5416,18 @@ function attachNewDefectPhoto(input){
 async function saveNewDefect(){
   const loc = document.getElementById('ndLoc').value.trim();
   if(!loc){ showToast('Location is required'); return; }
-  const priority = document.getElementById('ndPriority').value;
-  if(priority==='high' && !state._newDefectPhoto){ showToast('Add a photo for High priority defects'); return; }
-  const tags = state._newDefectTags.slice();
+  const observation = document.getElementById('ndObs').value;
+  // AI decides priority/tags from what was actually written — the person
+  // filling this form has no priority/tag picker to press or choose from.
+  const ai = aiAnalyzeIssue({label:'Manual defect', location:loc, observation, hasPhoto:!!state._newDefectPhoto});
+  const tags = ai.tags.slice();
   if(isRecurringLocation(loc) && !tags.includes('Recurring')) tags.push('Recurring');
+  const priority = ai.priority;
+  if(priority==='high' && !state._newDefectPhoto){ showToast('Add a photo for High priority defects'); return; }
   const defect = {
     id: uid('def'), sourceRecordId:null, formType:'daily-security', tower: document.getElementById('ndTower').value,
-    location: loc, observation: document.getElementById('ndObs').value,
-    priority, assignedTo: document.getElementById('ndAssign').value,
+    location: loc, observation,
+    priority, assignedTo: document.getElementById('ndAssign').value || ai.assignee || '',
     tags, photo: state._newDefectPhoto, resolutionPhoto:null, resolutionNote:null,
     targetDate:'', status:'open', createdAt:new Date().toISOString(), closedAt:null
   };
@@ -5586,7 +5491,7 @@ function renderModalLayer(){
   if(state._confirmOpen){ layer.innerHTML = confirmModal(state._confirmOpen); return; }
   layer.innerHTML = '';
 }
-function closeModals(){ state.showPinModal=false; state._editOpen=null; state._newDefectOpen=false; state._resolveOpen=null; state._resolveAfterPhoto=null; state._newTaskOpen=false; state._taskCompleteOpen=null; state._taskCompletePhoto=null; state._userPickerRole=null; state._newMemberOpen=null; state.pinPurpose=null; state._pendingMemberId=null; state._confirmOpen=null; state._installOpen=false; state._issuePopup=null; state._issueDraft=null; state._issueAi=null; state._newDefectAi=null; state._waShare=null; state._newVendorOpen=false; state._newSosOpen=false; state._sosMedia=[]; state._sosDetail=null; render(); }
+function closeModals(){ state.showPinModal=false; state._editOpen=null; state._newDefectOpen=false; state._resolveOpen=null; state._resolveAfterPhoto=null; state._newTaskOpen=false; state._taskCompleteOpen=null; state._taskCompletePhoto=null; state._userPickerRole=null; state._newMemberOpen=null; state.pinPurpose=null; state._pendingMemberId=null; state._confirmOpen=null; state._installOpen=false; state._issuePopup=null; state._issueDraft=null; state._issueAi=null; state._waShare=null; state._newVendorOpen=false; state._newSosOpen=false; state._sosMedia=[]; state._sosDetail=null; render(); }
 
 function installPromptModal(){
   const ios = isIOSDevice();
@@ -5659,11 +5564,9 @@ function newDefectModal(){
     + '<span class="section-label">Log a Defect</span>'
     + '<div class="field"><label class="field-label">Location</label><input type="text" id="ndLoc" placeholder="e.g. Lift Lobby – 4th Floor"></div>'
     + '<div class="field"><label class="field-label">Observation</label><textarea id="ndObs" placeholder="Describe the issue"></textarea></div>'
-    + aiAssistCard('newDefect')
-    + '<div class="two-col"><div class="field"><label class="field-label">Tower</label><select id="ndTower">'+TOWERS.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'
-    + '<div class="field"><label class="field-label">Priority</label><select id="ndPriority"><option value="high">High (24h)</option><option value="medium" selected>Medium (3 days)</option><option value="low">Low (7 days)</option></select></div></div>'
+    + '<p style="font-size:11px;color:var(--ink-faint);margin:-4px 0 10px;">'+icon('spark',11)+' Priority & tags are set automatically from your description.</p>'
+    + '<div class="field"><label class="field-label">Tower</label><select id="ndTower">'+TOWERS.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'
     + '<div class="field"><label class="field-label">Assigned To</label><input type="text" id="ndAssign" placeholder="Optional"></div>'
-    + '<div class="field"><label class="field-label">Tags</label><div class="tag-row">'+TAG_OPTIONS.map(tag=>'<button type="button" class="tag-chip '+(state._newDefectTags.includes(tag)?'active':'')+'" onclick="toggleNewDefectTag(\''+tag.replace(/'/g,"\\\\'")+'\')">'+tag+'</button>').join('')+'</div></div>'
     + '<div class="field"><label class="field-label">Photo</label><div class="photo-row">'+(state._newDefectPhoto? '<img class="photo-thumb" src="'+state._newDefectPhoto+'"><button type="button" class="btn btn-sm btn-ghost" onclick="state._newDefectPhoto=null; render();">Remove</button>' : '<label class="photo-add-btn">'+icon('camera',15)+' Add photo (optional)<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="attachNewDefectPhoto(this)"></label>')+'</div></div>'
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveNewDefect()">Save</button></div>'
     + '</div></div>';
@@ -5724,20 +5627,14 @@ function newMemberModal(){
   const opts = state._newMemberOpen;
   const editing = opts.editId ? DB.members.find(x=>x.id===opts.editId) : null;
   const roleVal = editing ? editing.role : (opts.role||'supervisor');
-  const editingIsOwner = editing && editing.mobile===OWNER_MOBILE;
   return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
     + '<span class="section-label">'+icon('users',15)+' '+(editing?'Edit':'Add')+' Team Member</span>'
     + '<div class="field" style="margin-top:10px;"><label class="field-label">Name</label><input type="text" id="memName" placeholder="Full name" value="'+(editing?esc(editing.name):'')+'"></div>'
-    + '<div class="field"><label class="field-label">Mobile (optional)</label><input type="tel" inputmode="numeric" id="memMobile" placeholder="10-digit mobile" maxlength="10" value="'+(editing?esc(editing.mobile||''):'')+'" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10);"></div>'
+    + '<div class="field"><label class="field-label">Mobile *</label><input type="tel" inputmode="numeric" id="memMobile" placeholder="10-digit mobile" maxlength="10" value="'+(editing?esc(editing.mobile||''):'')+'" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10);"></div>'
     + '<div class="two-col">'
       + '<div class="field"><label class="field-label">Role</label><select id="memRole"><option value="supervisor" '+(roleVal==='supervisor'?'selected':'')+'>Supervisor</option><option value="admin" '+(roleVal==='admin'?'selected':'')+'>Admin</option></select></div>'
       + '<div class="field"><label class="field-label">PIN (optional)</label><input type="password" inputmode="numeric" id="memPin" placeholder="4+ digits" maxlength="8" value="'+(editing?esc(editing.pin||''):'')+'"></div>'
     + '</div>'
-    + (editingIsOwner
-        ? '<p style="font-size:11px; color:var(--brand); margin:-4px 0 8px;">'+icon('lock',11)+' This is the account owner (mobile matches the built-in owner number) — always has full team-management rights.</p>'
-        : (isOwner()
-            ? '<div class="settings-row" style="padding:8px 0;"><div class="settings-row-text"><b style="font-size:12.5px;">Can manage team members</b><span>Lets this admin add/edit/remove people and grant this same right to others</span></div><label class="switch"><input type="checkbox" id="memCanManage" '+(editing&&editing.canManageMembers?'checked':'')+'><span class="switch-track"></span></label></div>'
-            : ''))
     + '<p style="font-size:11px; color:var(--ink-faint); margin:4px 0 4px;">If a PIN is set, it\'s asked for when this person logs in on a device. Leave blank for one-tap login — convenience only, not secure authentication.</p>'
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveMember()">'+icon('check',15)+' Save</button></div>'
     + '</div></div>';
@@ -6423,7 +6320,7 @@ async function saveResidentComplaint(){
   if(!d.rcName || !d.rcName.trim()){ showToast(T('toast_enter_name')); return; }
   if(!d.rcFlat || !d.rcFlat.trim()){ showToast(T('toast_enter_flat')); return; }
   if(!d.rcProblem || !d.rcProblem.trim()){ showToast(T('toast_enter_problem')); return; }
-  if(d.rcMobile && !/^[0-9]{10}$/.test(d.rcMobile.trim())){ showToast('Mobile must be exactly 10 digits, or left blank'); return; }
+  if(!d.rcMobile || !/^[0-9]{10}$/.test(d.rcMobile.trim())){ showToast('Mobile number is required (10 digits)'); return; }
   if(state.residentMode){
     await doSaveResidentComplaint();
     return;
@@ -6682,7 +6579,7 @@ function viewSettings(){
         + teamMembersHtml()
         + (canManageTeam()
             ? '<div class="btn-row" style="margin-top:10px;"><button class="btn btn-sm btn-ghost" onclick="openNewMember(\'supervisor\')">'+icon('plus',13)+' Add Supervisor</button><button class="btn btn-sm btn-ghost" onclick="openNewMember(\'admin\')">'+icon('plus',13)+' Add Admin</button></div>'
-            : '<p style="font-size:11.5px; color:var(--ink-faint); margin-top:8px;">Only the account owner ('+OWNER_MOBILE+') — or someone they\'ve granted rights to — can add, edit, or remove team members.</p>')
+            : '<p style="font-size:11.5px; color:var(--ink-faint); margin-top:8px;">Unlock Admin mode to add, edit, or remove team members.</p>')
         + '<p class="chart-fallback-note">Adding people here lets them log in by picking their name from a list instead of typing it fresh every time — their name and mobile auto-fill new inspections. PINs here are the same convenience-only lock used elsewhere in this app, not secure authentication.</p>'
       + '</div>' : '')
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('wrench',13)+' Completed Tasks</span>' + completedTasksHtml() + '</div>' : '')
@@ -6720,14 +6617,9 @@ function teamMembersHtml(){
   const sups = DB.members.filter(m=>m.role==='supervisor');
   const allowed = canManageTeam();
   function row(m){
-    const isOwnerRow = m.mobile===OWNER_MOBILE;
     return '<div class="item-row"><div><b style="font-size:13px;">'+esc(m.name)+'</b>'
       + (m.mobile? '<div style="font-size:11.5px; color:var(--ink-soft);">'+esc(m.mobile)+'</div>' : '')
-      + '<div style="margin-top:3px; display:flex; gap:5px; flex-wrap:wrap;">'
-        + (isOwnerRow? '<span class="badge danger">Owner</span>' : '')
-        + (!isOwnerRow && m.canManageMembers? '<span class="badge info">Can manage team</span>' : '')
-        + (m.pin? '<span class="badge low">PIN set</span>' : '')
-      + '</div>'
+      + (m.pin? '<div style="margin-top:3px;"><span class="badge low">PIN set</span></div>' : '')
       + '</div>'
       + (allowed? '<div style="display:flex; gap:6px;"><button class="btn btn-sm btn-ghost" style="width:auto;" onclick="openEditMember(\''+m.id+'\')">'+icon('edit',13)+'</button><button class="btn btn-sm btn-ghost" style="width:auto; color:var(--danger);" onclick="confirmDeleteMember(\''+m.id+'\')">'+icon('trash',13)+'</button></div>' : '')
       + '</div>';
@@ -6756,9 +6648,20 @@ function completedTasksHtml(){
 const VENDOR_TRADES = [
   {key:'plumber', label:'Plumber'},
   {key:'electrician', label:'Electrician'},
+  {key:'lift', label:'Lift / Elevator'},
+  {key:'firesafety', label:'Fire Safety'},
+  {key:'cctv', label:'CCTV / Security Systems'},
+  {key:'generator', label:'Generator (DG Set)'},
+  {key:'stp', label:'STP / Sewage'},
+  {key:'pestcontrol', label:'Pest Control'},
   {key:'housekeeping', label:'Housekeeping'},
+  {key:'gardening', label:'Gardening / Landscaping'},
+  {key:'pool', label:'Swimming Pool'},
+  {key:'gym', label:'Gym Equipment'},
   {key:'carpenter', label:'Carpenter'},
-  {key:'security', label:'Security'},
+  {key:'painter', label:'Painter'},
+  {key:'security', label:'Security (Guards)'},
+  {key:'watertanker', label:'Water Tanker'},
   {key:'other', label:'Other'}
 ];
 const SOS_KINDS = [
