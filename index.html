@@ -7,7 +7,11 @@
 <title>Max Heights Majestic - Inspection System</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preload" as="image" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120.png">
+<link rel="apple-touch-icon" href="apple-touch-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <meta name="theme-color" content="#0F4C4C">
@@ -15,6 +19,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MHM Inspection">
+<meta name="format-detection" content="telephone=no">
 <script defer src="back-button-handler.js"></script>
 <script>if('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){});</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -182,7 +187,7 @@ a { color: inherit; }
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   border-bottom: 1px solid var(--glass-border);
   color: #fff;
-  padding: 10px 16px 12px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 12px;
   display: flex; flex-direction: column; gap: 9px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   will-change: transform;
@@ -236,7 +241,7 @@ html[data-theme="dark"] .topbar {
 }
 .role-switch button.active { background: #fff; color: var(--brand-dark); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
 @media (max-width: 380px) {
-  .topbar { padding: 12px 10px; }
+  .topbar { padding: calc(12px + env(safe-area-inset-top)) 10px; }
   .icon-btn { width: 32px; height: 32px; }
   .role-switch button { padding: 7px 8px; font-size: 10px; }
 }
@@ -670,7 +675,7 @@ textarea { resize: vertical; min-height: 56px; }
 .remarks-row { padding: 8px 0 4px; }
 .floor-head.sticky-open, .section-header.sticky-open {
   position: sticky;
-  top: 60px;
+  top: calc(60px + env(safe-area-inset-top));
   z-index: 12;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
 }
@@ -999,7 +1004,7 @@ html[data-theme="dark"] .pill.recurring { background: var(--brand-tint); color: 
 /* Emergency SOS enhancement */
 .sos-alert-banner {
   position: fixed;
-  top: 60px;
+  top: calc(60px + env(safe-area-inset-top));
   left: 0;
   right: 0;
   height: 2px;
@@ -1361,7 +1366,7 @@ body.keyboard-open .bottomnav, body.keyboard-open .sticky-actionbar{display:none
 /* Full-screen photo viewer — tap any photo thumbnail to open, tap anywhere to close */
 .lightbox-overlay{position:fixed; inset:0; z-index:200; background:rgba(10,14,20,0.92); display:flex; align-items:center; justify-content:center; padding:16px; animation:fadeSlideIn .15s ease; cursor:zoom-out;}
 .lightbox-overlay img{max-width:100%; max-height:92vh; border-radius:10px; box-shadow:0 8px 40px rgba(0,0,0,0.5); touch-action:pinch-zoom;}
-.lightbox-close{position:fixed; top:14px; right:14px; z-index:201; width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,0.14); color:#fff; font-size:20px; cursor:pointer;}
+.lightbox-close{position:fixed; top:calc(14px + env(safe-area-inset-top)); right:14px; z-index:201; width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,0.14); color:#fff; font-size:20px; cursor:pointer;}
 /* Resident-only mode (?resident=1) — a clean complaint-only view for
    residents: no staff nav, no role switch, no notifications. */
 body.resident-mode .bottomnav, body.resident-mode .sidenav,
@@ -1405,7 +1410,7 @@ canvas.sigpad{width:100%; height:120px; touch-action:none; display:block;}
 }
 /* notification panel */
 .notif-panel{
-  position:fixed; top:64px; right:12px; width:320px; max-width:calc(100vw - 24px); max-height:70vh; overflow:auto;
+  position:fixed; top:calc(64px + env(safe-area-inset-top)); right:12px; width:320px; max-width:calc(100vw - 24px); max-height:70vh; overflow:auto;
   border-radius:16px; z-index:60; padding:6px; animation:fadeSlideIn .2s ease;
 }
 @media (min-width:900px) {
@@ -2454,8 +2459,11 @@ let state = {
   theme: 'light',
   lang: 'en', // 'en' | 'hi'
   adminUnlocked: false,
+  _authScreen: null, // null | 'checking' | 'login' | 'bootstrap'
+  _authError: null,
+  _authForm: {name:'', mobile:'', password:'', password2:''},
   showPinModal: false,
-  pinPurpose: null, // 'switch' | 'change'
+  pinPurpose: null, // 'memberlogin' only now — admin unlock uses real auth
   notifOpen: false,
   _newDefectPhoto: null,
   _newDefectMedia: [], // video/audio attachments — [{type,dataUrl,name,mime}]
@@ -2493,7 +2501,7 @@ let state = {
   _sosKind: 'general',             // selected emergency type inside the raise-SOS sheet
   _resolveAfterPhoto: null           // after-photo held during defect resolution modal
 };
-let DB = { inspections: [], defects: [], audit: [], tasks: [], members: [], vendors: [], sos: [] };
+let DB = { inspections: [], defects: [], audit: [], tasks: [], members: [], vendors: [], sos: [], staff: [] };
 let sigCtx = null, sigDrawing = false, sigHasStroke = false;
 let LIBS = { chart:false, xlsx:false, jspdf:false, qrcode:false };
 
@@ -2583,7 +2591,15 @@ function initFirebase(){
         loadScript('https://www.gstatic.com/firebasejs/'+FIREBASE_SDK_VERSION+'/firebase-auth-compat.js')
       ]), 10000);
       firebase.initializeApp(FIREBASE_CONFIG);
-      await fbWithTimeout(firebase.auth().signInAnonymously(), 12000);
+      // NOTE: no automatic signInAnonymously() here anymore. Every visitor
+      // used to get an anonymous session for free, which is what made
+      // "request.auth != null" rules meaningless — anyone could self-issue
+      // that token with zero verification. Auth now happens explicitly:
+      // ensureResidentAuth() for the public complaint link (still anonymous,
+      // but Firestore rules only let that identity CREATE a new complaint,
+      // nothing else), or staffSignIn()/bootstrapFirstAdmin() for real
+      // mobile+password staff accounts, which get looked up against a
+      // server-side staff/{uid} document that rules key everything else on.
       fbDb = firebase.firestore();
       return fbDb;
     }catch(e){
@@ -2594,6 +2610,259 @@ function initFirebase(){
   })();
   return fbInitPromise;
 }
+
+/* =========================================================
+   REAL AUTH — replaces the old client-side PIN "convenience
+   lock". Staff sign in with mobile number + password (Firebase
+   Auth doesn't have native phone+password, so the mobile number
+   is mapped to a synthetic, unreachable email under the hood —
+   nobody ever sees or types an email, it's purely an internal
+   identifier). Firestore rules check a staff/{uid} document to
+   decide what a signed-in session may read or write, so this is
+   enforced on the server, not just hidden behind app UI.
+========================================================= */
+let AUTH_USER = null;   // firebase.auth().currentUser, once signed in
+let STAFF_DOC = null;   // {role, name, mobile} loaded from staff/{uid}
+
+function mobileToAuthEmail(mobile){
+  return String(mobile||'').trim() + '@mhm-app.local'; // internal-only identifier, never shown, never sent anywhere
+}
+
+// Public resident-complaint link (?resident=1): a lightweight anonymous
+// session so Firestore rules have *something* to check, but rules only
+// grant this identity permission to CREATE a new complaint — never read,
+// list, update, or delete. This intentionally stays low-friction; residents
+// should never see a login screen just to report a leaking tap.
+async function ensureResidentAuth(){
+  const db = await initFirebase();
+  if(!db) return null;
+  try{
+    if(!firebase.auth().currentUser){
+      await fbWithTimeout(firebase.auth().signInAnonymously(), 12000);
+    }
+    return firebase.auth().currentUser;
+  }catch(e){ console.error('resident sign-in failed', e); return null; }
+}
+
+async function loadStaffDoc(uid){
+  const db = await initFirebase();
+  if(!db) return null;
+  try{
+    const doc = await fbWithTimeout(db.collection('staff').doc(uid).get());
+    return doc.exists ? doc.data() : null;
+  }catch(e){ console.error('could not load staff doc', e); return null; }
+}
+
+async function isBootstrapOpen(){
+  const db = await initFirebase();
+  if(!db) return false;
+  try{
+    const doc = await fbWithTimeout(db.collection('app_meta').doc('bootstrap').get());
+    return !doc.exists;
+  }catch(e){
+    // If we can't tell (offline, etc.), don't offer to create a fresh
+    // admin — safer to fall through to the normal login screen.
+    return false;
+  }
+}
+
+async function staffSignIn(mobile, password){
+  const db = await initFirebase();
+  if(!db) throw new Error('No connection — check your internet and try again');
+  const email = mobileToAuthEmail(mobile);
+  const cred = await fbWithTimeout(firebase.auth().signInWithEmailAndPassword(email, password), 12000);
+  return cred.user;
+}
+
+// The very first account on a fresh deployment: creates both the Auth
+// user and their staff/{uid} admin record, then immediately writes
+// app_meta/bootstrap to lock this path shut for everyone after — rules
+// enforce that lock server-side, so this can only ever succeed once.
+async function bootstrapFirstAdmin(mobile, password, name){
+  const db = await initFirebase();
+  if(!db) throw new Error('No connection — check your internet and try again');
+  const email = mobileToAuthEmail(mobile);
+  const cred = await fbWithTimeout(firebase.auth().createUserWithEmailAndPassword(email, password), 12000);
+  const uid = cred.user.uid;
+  const staffData = {role:'admin', name:name.trim(), mobile:mobile.trim(), addedAt: firebase.firestore.FieldValue.serverTimestamp(), addedBy:'bootstrap'};
+  await fbWithTimeout(db.collection('staff').doc(uid).set(staffData));
+  await fbWithTimeout(db.collection('app_meta').doc('bootstrap').set({usedBy: uid, at: firebase.firestore.FieldValue.serverTimestamp()}));
+  return {uid, role:'admin', name:staffData.name, mobile:staffData.mobile};
+}
+
+// A second, isolated Firebase Auth instance so an already-signed-in admin
+// can create ANOTHER person's account without Firebase silently swapping
+// the admin's own browser session over to the new user (which is what
+// createUserWithEmailAndPassword does on the primary auth instance).
+function getSecondaryAuth(){
+  let secApp;
+  try{ secApp = firebase.app('mhm-secondary'); }
+  catch(e){ secApp = firebase.initializeApp(FIREBASE_CONFIG, 'mhm-secondary'); }
+  return secApp.auth();
+}
+
+async function adminCreateStaffAccount(mobile, password, role, name){
+  const db = await initFirebase();
+  if(!db) throw new Error('No connection — check your internet and try again');
+  const auth2 = getSecondaryAuth();
+  const email = mobileToAuthEmail(mobile);
+  const cred = await fbWithTimeout(auth2.createUserWithEmailAndPassword(email, password), 12000);
+  const uid = cred.user.uid;
+  try{ await auth2.signOut(); }catch(e){}
+  const staffData = {role, name:name.trim(), mobile:mobile.trim(), addedAt: firebase.firestore.FieldValue.serverTimestamp(), addedBy: STAFF_DOC?STAFF_DOC.name:null};
+  await fbWithTimeout(db.collection('staff').doc(uid).set(staffData));
+  return {uid, role, name:staffData.name, mobile:staffData.mobile};
+}
+
+async function staffSignOut(){
+  try{ await firebase.auth().signOut(); }catch(e){}
+  AUTH_USER = null; STAFF_DOC = null;
+  state.currentUser = null; state.role = 'supervisor'; state.adminUnlocked = false;
+  state._authScreen = 'login';
+  state._authForm = {name:'', mobile:'', password:'', password2:''};
+  state._authError = null;
+  try{ await storeDeletePersonal('currentUserId'); }catch(e){}
+  state.view = 'home';
+  render();
+}
+
+function friendlyAuthError(e){
+  const code = (e && e.code) || '';
+  if(code==='auth/wrong-password' || code==='auth/invalid-credential' || code==='auth/invalid-login-credentials') return 'Incorrect mobile number or password';
+  if(code==='auth/user-not-found') return 'No account found for this mobile number — ask your Admin to add you';
+  if(code==='auth/email-already-in-use') return 'An account already exists for this mobile number (maybe a removed one — Firebase keeps the old sign-in around even after Remove). Try a different number, or wait and retry.';
+  if(code==='auth/weak-password') return 'Password must be at least 6 characters';
+  if(code==='auth/network-request-failed') return 'No internet connection — please try again';
+  if(code==='auth/too-many-requests') return 'Too many attempts — please wait a bit and try again';
+  return (e && e.message) ? e.message : 'Something went wrong — please try again';
+}
+
+async function onStaffAuthenticated(user, staffData){
+  AUTH_USER = user;
+  STAFF_DOC = staffData;
+  state.currentUser = {name: staffData.name, mobile: staffData.mobile, role: staffData.role};
+  state.role = staffData.role;
+  state.adminUnlocked = (staffData.role==='admin');
+  state._authScreen = null;
+  state._authError = null;
+  state._authForm = {name:'', mobile:'', password:'', password2:''};
+  state.view = 'home';
+  state._isNavigating = true;
+  showAppNow();
+  try{
+    await loadAll();
+    await loadAutoAssignRules();
+    await loadStaffList();
+  }catch(e){}
+  render();
+}
+async function loadStaffList(){
+  const db = await initFirebase();
+  if(!db){ DB.staff = []; return; }
+  try{
+    const snap = await fbWithTimeout(db.collection('staff').get());
+    DB.staff = snap.docs.map(d=>({uid: d.id, ...d.data()}));
+    DB.staff.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  }catch(e){
+    console.error('could not load staff list', e);
+    DB.staff = [];
+  }
+}
+
+async function submitStaffLogin(){
+  const mobile = (document.getElementById('authMobile')||{}).value?.trim() || '';
+  const password = (document.getElementById('authPassword')||{}).value || '';
+  if(!/^\d{10}$/.test(mobile)){ state._authError = 'Enter a valid 10-digit mobile number'; render(); bindAuthInputs(); return; }
+  if(!password){ state._authError = 'Enter your password'; render(); bindAuthInputs(); return; }
+  state._authError = null;
+  const prevScreen = state._authScreen;
+  state._authScreen = 'checking';
+  render();
+  try{
+    const user = await staffSignIn(mobile, password);
+    const staffData = await loadStaffDoc(user.uid);
+    if(!staffData){
+      try{ await firebase.auth().signOut(); }catch(e){}
+      state._authError = 'This account has no role assigned — ask your Admin to add you as staff.';
+      state._authScreen = 'login';
+      render(); bindAuthInputs();
+      return;
+    }
+    await onStaffAuthenticated(user, staffData);
+  }catch(e){
+    console.error('login failed', e);
+    state._authError = friendlyAuthError(e);
+    state._authScreen = prevScreen;
+    render(); bindAuthInputs();
+  }
+}
+
+async function submitBootstrap(){
+  const name = (document.getElementById('authName')||{}).value?.trim() || '';
+  const mobile = (document.getElementById('authMobile')||{}).value?.trim() || '';
+  const p1 = (document.getElementById('authPassword')||{}).value || '';
+  const p2 = (document.getElementById('authPassword2')||{}).value || '';
+  if(!name){ state._authError = 'Enter your name'; render(); bindAuthInputs(); return; }
+  if(!/^\d{10}$/.test(mobile)){ state._authError = 'Enter a valid 10-digit mobile number'; render(); bindAuthInputs(); return; }
+  if(p1.length<6){ state._authError = 'Password must be at least 6 characters'; render(); bindAuthInputs(); return; }
+  if(p1!==p2){ state._authError = "Passwords don't match"; render(); bindAuthInputs(); return; }
+  state._authError = null;
+  state._authScreen = 'checking';
+  render();
+  try{
+    const stillOpen = await isBootstrapOpen();
+    if(!stillOpen){
+      state._authError = 'Admin account already set up on this deployment — please sign in instead.';
+      state._authScreen = 'login';
+      render(); bindAuthInputs();
+      return;
+    }
+    const staffData = await bootstrapFirstAdmin(mobile, p1, name);
+    await onStaffAuthenticated(firebase.auth().currentUser, staffData);
+  }catch(e){
+    console.error('bootstrap failed', e);
+    state._authError = friendlyAuthError(e);
+    state._authScreen = 'bootstrap';
+    render(); bindAuthInputs();
+  }
+}
+
+function bindAuthInputs(){
+  ['authName','authMobile','authPassword','authPassword2'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('keydown', e=>{ if(e.key==='Enter') (state._authScreen==='bootstrap' ? submitBootstrap : submitStaffLogin)(); });
+  });
+  const first = document.getElementById('authName') || document.getElementById('authMobile');
+  if(first) first.focus();
+}
+
+function loginGateHtml(){
+  const screen = state._authScreen;
+  const err = state._authError;
+  const f = state._authForm;
+  if(screen==='checking'){
+    return '<div class="stack" style="min-height:80vh; display:flex; align-items:center; justify-content:center;">'
+      + '<div style="text-align:center; color:var(--ink-soft); font-size:13px;">'+icon('spinner',18)+'<div style="margin-top:8px;">Checking sign-in…</div></div>'
+      + '</div>';
+  }
+  const isBootstrap = screen==='bootstrap';
+  return '<div class="stack" style="min-height:85vh; display:flex; align-items:center; justify-content:center; padding:16px;">'
+    + '<div class="card" style="max-width:360px; width:100%;">'
+    + '<div style="text-align:center; margin-bottom:16px;"><img src="'+LOGO_48+'" alt="logo" style="width:56px;height:56px;border-radius:14px;background:#fff;padding:6px;box-shadow:var(--shadow-sm);">'
+      + '<div style="font-weight:800; font-size:16px; margin-top:10px;">'+(isBootstrap?'Set up your Admin account':'Sign in')+'</div>'
+      + '<div style="font-size:12px; color:var(--ink-soft); margin-top:3px;">'+(isBootstrap?'Ye is deployment ka pehla account hai — aap seedha Admin banoge.':'Max Heights Majestic — Inspection System')+'</div></div>'
+    + (isBootstrap ? '<div class="field"><label class="field-label">Your name</label><input type="text" id="authName" value="'+esc(f.name)+'" placeholder="e.g. Rohit Sharma" oninput="state._authForm.name=this.value"></div>' : '')
+    + '<div class="field"><label class="field-label">Mobile number</label><input type="tel" inputmode="numeric" maxlength="10" id="authMobile" value="'+esc(f.mobile)+'" placeholder="10-digit mobile" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10); state._authForm.mobile=this.value"></div>'
+    + '<div class="field"><label class="field-label">Password</label><input type="password" id="authPassword" value="'+esc(f.password)+'" placeholder="'+(isBootstrap?'Min 6 characters':'Enter password')+'" oninput="state._authForm.password=this.value"></div>'
+    + (isBootstrap ? '<div class="field"><label class="field-label">Confirm password</label><input type="password" id="authPassword2" value="'+esc(f.password2)+'" placeholder="Re-enter password" oninput="state._authForm.password2=this.value"></div>' : '')
+    + (err ? '<p style="font-size:12px; color:var(--danger); margin:6px 0 0;">'+esc(err)+'</p>' : '')
+    + '<button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="'+(isBootstrap?'submitBootstrap()':'submitStaffLogin()')+'">'+(isBootstrap?'Create Admin account':'Sign in')+'</button>'
+    + (!isBootstrap ? '<p style="font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:12px;">Account nahi hai? Apne Admin se milwao — wahi aapko add kar sakte hain.</p>'
+                    : '<p style="font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:12px;">Baad mein aur staff/supervisor accounts Settings se add kar sakte ho.</p>')
+    + '</div>'
+    + '</div>';
+}
+
 async function fbSet(key, value){
   const db = await initFirebase();
   if(!db) throw new Error('Firebase unavailable');
@@ -3086,15 +3355,15 @@ async function setLang(lang){
    anyone with browser devtools can bypass this. It only
    deters accidental role switches on a shared device.)
 ========================================================= */
-async function getAdminPin(){
-  const p = await storeGet('settings:adminPin');
-  return (p && p.value) ? p.value : '1234';
-}
 function requestAdminSwitch(){
-  if(state.adminUnlocked){ setRole('admin'); return; }
-  state.pinPurpose = 'switch';
-  state.showPinModal = true;
-  render();
+  if(state.adminUnlocked){ state.role='admin'; state.view='home'; state._isNavigating=true; render(); return; }
+  askConfirm({
+    title: 'Admin account se sign in karo',
+    message: 'Admin dekhne ke liye apne admin mobile number + password se sign in karna hoga. Ab sign out karke login screen par jaayein?',
+    confirmLabel: 'Sign out & login',
+    danger: false,
+    onConfirm: staffSignOut
+  });
 }
 async function submitPin(entered){
   if(state.pinPurpose==='memberlogin'){
@@ -3110,38 +3379,9 @@ async function submitPin(entered){
     }
     return;
   }
-  const real = await getAdminPin();
-  if(entered === real){
-    if(state.pinPurpose==='switch'){
-      state.adminUnlocked = true;
-      state.showPinModal = false;
-      setRole('admin');
-      showToast('Admin unlocked');
-    } else if(state.pinPurpose==='change'){
-      state.showPinModal = false;
-      state.pinPurpose = 'change2';
-      state.showPinModal = true;
-      render();
-    }
-  } else {
-    showToast('Incorrect PIN');
-  }
-}
-async function submitNewPin(p1, p2){
-  if(p1.length<4){ showToast('PIN must be at least 4 digits'); return; }
-  if(p1!==p2){ showToast("PINs don't match"); return; }
-  await storeSet('settings:adminPin', {value:p1});
-  state.showPinModal = false;
-  state.pinPurpose = null;
-  await logAudit('pin_changed', 'Admin PIN was changed');
-  render();
-  showToast('Admin PIN updated');
 }
 function lockAdmin(){
-  state.adminUnlocked = false;
-  if(state.currentUser && state.currentUser.role==='admin'){ state.currentUser=null; storeDeletePersonal('currentUserId'); }
-  setRole('supervisor');
-  showToast('Admin locked');
+  staffSignOut();
 }
 
 /* =========================================================
@@ -3177,11 +3417,13 @@ async function loginAsMember(m){
 }
 function switchUser(){
   if(!state.currentUser) return;
-  const roleMembers = DB.members.filter(m=>m.role===state.role);
-  if(!roleMembers.length) return;
-  state.currentUser = null;
-  storeDeletePersonal('currentUserId');
-  openUserPicker(state.role);
+  askConfirm({
+    title: 'Sign out?',
+    message: 'Dusre staff member ko apne account se sign in karna hoga.',
+    confirmLabel: 'Sign out',
+    danger: false,
+    onConfirm: staffSignOut
+  });
 }
 function openNewMember(role){
   if(!canManageTeam()){ showToast('Only the account owner (or someone they\'ve granted rights to) can add team members'); return; }
@@ -3227,7 +3469,7 @@ function confirmDeleteMember(id){
   if(!canManageTeam()){ showToast('Only the account owner (or someone they\'ve granted rights to) can remove team members'); return; }
   const m = DB.members.find(x=>x.id===id);
   if(!m) return;
-  askConfirm({title:'Remove '+m.name+'?', message:'They\'ll need to be re-added to log in again. Their past inspections and tasks are not affected.', confirmLabel:'Remove', danger:true, onConfirm: ()=>deleteMember(id)});
+  askConfirm({title:'Remove '+m.name+'?', message:'This only removes their name from the auto-fill list — it does not affect their sign-in account (see Staff Accounts). Their past inspections and tasks are not affected.', confirmLabel:'Remove', danger:true, onConfirm: ()=>deleteMember(id)});
 }
 async function deleteMember(id){
   if(!canManageTeam()) return;
@@ -3238,6 +3480,160 @@ async function deleteMember(id){
   render();
   showToast('Member removed');
 }
+
+/* =========================================================
+   STAFF ACCOUNTS — real sign-in (mobile + password), separate
+   from the "Team Members" roster above. That roster only labels
+   who an inspection was filled out by (auto-fill convenience);
+   THIS is what actually grants access to the app's data, enforced
+   by Firestore rules server-side via the staff/{uid} lookup.
+========================================================= */
+function openNewStaffAccount(){
+  if(state.role!=='admin'){ showToast('Only Admin can add staff accounts'); return; }
+  state._newStaffOpen = {};
+  state._newStaffError = null;
+  render();
+}
+function newStaffAccountModal(){
+  const err = state._newStaffError;
+  return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
+    + '<span class="section-label">'+icon('users',14)+' Add Staff Account</span>'
+    + '<p style="font-size:12px; color:var(--ink-soft); margin:2px 0 10px;">They\'ll sign in with this mobile number + password. Share the password with them separately and ask them to keep it safe — this app doesn\'t have a self-service "forgot password" yet, so if they lose it you\'ll need to add them again.</p>'
+    + '<div class="field"><label class="field-label">Name</label><input type="text" id="nsName" placeholder="e.g. Priya Verma"></div>'
+    + '<div class="field"><label class="field-label">Mobile number</label><input type="tel" inputmode="numeric" maxlength="10" id="nsMobile" placeholder="10-digit mobile" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10)"></div>'
+    + '<div class="field"><label class="field-label">Role</label><select id="nsRole"><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>'
+    + '<div class="field"><label class="field-label">Temporary password</label><input type="text" id="nsPassword" placeholder="Min 6 characters"></div>'
+    + (err ? '<p style="font-size:12px; color:var(--danger); margin:4px 0 0;">'+esc(err)+'</p>' : '')
+    + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveNewStaffAccount()">Create account</button></div>'
+    + '</div></div>';
+}
+async function saveNewStaffAccount(){
+  const name = (document.getElementById('nsName')||{}).value?.trim() || '';
+  const mobile = (document.getElementById('nsMobile')||{}).value?.trim() || '';
+  const role = (document.getElementById('nsRole')||{}).value || 'supervisor';
+  const password = (document.getElementById('nsPassword')||{}).value || '';
+  if(!name){ state._newStaffError='Enter a name'; render(); return; }
+  if(!/^\d{10}$/.test(mobile)){ state._newStaffError='Enter a valid 10-digit mobile number'; render(); return; }
+  if(password.length<6){ state._newStaffError='Password must be at least 6 characters'; render(); return; }
+  state._newStaffError = null;
+  try{
+    const created = await adminCreateStaffAccount(mobile, password, role, name);
+    DB.staff.push(created);
+    DB.staff.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    await logAudit('staff_added', name+' ('+role+') — mobile '+mobile);
+    state._newStaffOpen = null;
+    render();
+    showToast('Staff account created — share the mobile number & password with them');
+  }catch(e){
+    console.error('create staff account failed', e);
+    state._newStaffError = friendlyAuthError(e);
+    render();
+  }
+}
+
+function staffAccountsListHtml(){
+  if(!DB.staff.length) return '<p style="font-size:11.5px; color:var(--ink-faint); margin-top:8px;">No staff accounts loaded yet.</p>';
+  const adminCount = DB.staff.filter(s=>s.role==='admin').length;
+  return DB.staff.map(s=>{
+    const isSelf = AUTH_USER && s.uid===AUTH_USER.uid;
+    const isLastAdmin = s.role==='admin' && adminCount<=1;
+    return '<div class="item-row" style="gap:8px;">'
+      + '<div style="flex:1; min-width:0;"><b style="font-size:13px;">'+esc(s.name)+'</b>'+(isSelf?' <span style="color:var(--ink-faint); font-weight:400; font-size:11.5px;">(you)</span>':'')+'<div style="font-size:11.5px; color:var(--ink-soft);">'+esc(s.mobile)+' · '+(s.role==='admin'?'Admin':'Supervisor')+'</div></div>'
+      + '<button class="btn btn-sm btn-ghost" onclick="openEditStaffAccount(\''+s.uid+'\')">Edit</button>'
+      + (isLastAdmin ? '' : '<button class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="confirmRemoveStaffAccount(\''+s.uid+'\')">Remove</button>')
+      + '</div>';
+  }).join('');
+}
+
+function openEditStaffAccount(uid){
+  const s = DB.staff.find(x=>x.uid===uid);
+  if(!s) return;
+  state._editStaffOpen = {uid, name:s.name, role:s.role};
+  state._editStaffError = null;
+  render();
+}
+function editStaffAccountModal(){
+  const d = state._editStaffOpen;
+  const s = DB.staff.find(x=>x.uid===d.uid);
+  if(!s) return '';
+  const adminCount = DB.staff.filter(x=>x.role==='admin').length;
+  const isLastAdmin = s.role==='admin' && adminCount<=1;
+  const err = state._editStaffError;
+  return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
+    + '<span class="section-label">'+icon('users',14)+' Edit Staff Account</span>'
+    + '<div class="field"><label class="field-label">Name</label><input type="text" id="esName" value="'+esc(d.name)+'" oninput="state._editStaffOpen.name=this.value"></div>'
+    + '<div class="field"><label class="field-label">Mobile number (sign-in ID)</label><input type="text" value="'+esc(s.mobile)+'" disabled style="opacity:.6;"></div>'
+    + '<p style="font-size:11px; color:var(--ink-faint); margin:-6px 0 8px;">Can\'t be changed here — remove and re-add with the new number instead.</p>'
+    + '<div class="field"><label class="field-label">Role</label><select id="esRole" onchange="state._editStaffOpen.role=this.value" '+(isLastAdmin?'disabled':'')+'><option value="supervisor" '+(d.role==='supervisor'?'selected':'')+'>Supervisor</option><option value="admin" '+(d.role==='admin'?'selected':'')+'>Admin</option></select></div>'
+    + (isLastAdmin ? '<p style="font-size:11px; color:var(--warn); margin-top:-6px;">This is the only Admin account — add another Admin before changing this one\'s role.</p>' : '')
+    + (err ? '<p style="font-size:12px; color:var(--danger); margin:4px 0 0;">'+esc(err)+'</p>' : '')
+    + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveEditStaffAccount()">Save</button></div>'
+    + '</div></div>';
+}
+async function saveEditStaffAccount(){
+  const d = state._editStaffOpen;
+  const s = DB.staff.find(x=>x.uid===d.uid);
+  if(!d || !s) return;
+  const name = (d.name||'').trim();
+  if(!name){ state._editStaffError='Enter a name'; render(); return; }
+  const adminCount = DB.staff.filter(x=>x.role==='admin').length;
+  if(s.role==='admin' && d.role!=='admin' && adminCount<=1){
+    state._editStaffError = 'Cannot change this — it\'s the only Admin account.';
+    render();
+    return;
+  }
+  try{
+    const db = await initFirebase();
+    if(!db) throw new Error('No connection — check your internet and try again');
+    await fbWithTimeout(db.collection('staff').doc(d.uid).update({role: d.role, name}));
+    s.role = d.role; s.name = name;
+    if(AUTH_USER && d.uid===AUTH_USER.uid){
+      // Editing your own account — keep the local session in sync too.
+      STAFF_DOC.role = d.role; STAFF_DOC.name = name;
+      state.currentUser = {name, mobile:s.mobile, role:d.role};
+      state.role = d.role; state.adminUnlocked = (d.role==='admin');
+    }
+    await logAudit('staff_edited', name+' → '+d.role);
+    state._editStaffOpen = null;
+    render();
+    showToast('Staff account updated');
+  }catch(e){
+    console.error('edit staff account failed', e);
+    state._editStaffError = friendlyAuthError(e);
+    render();
+  }
+}
+function confirmRemoveStaffAccount(uid){
+  const s = DB.staff.find(x=>x.uid===uid);
+  if(!s) return;
+  const adminCount = DB.staff.filter(x=>x.role==='admin').length;
+  if(s.role==='admin' && adminCount<=1){ showToast('Cannot remove the only Admin account'); return; }
+  askConfirm({
+    title: 'Remove '+s.name+'?',
+    message: 'Unka sign-in turant band ho jayega. Dhyaan rahe: isi mobile number se turant naya account nahi banega (Firebase apne aap purana sign-in poora delete nahi karta) — thodi der baad ya alag number se try karna.',
+    confirmLabel: 'Remove access',
+    danger: true,
+    onConfirm: ()=>removeStaffAccount(uid)
+  });
+}
+async function removeStaffAccount(uid){
+  const s = DB.staff.find(x=>x.uid===uid);
+  if(!s) return;
+  try{
+    const db = await initFirebase();
+    if(!db) throw new Error('No connection');
+    await fbWithTimeout(db.collection('staff').doc(uid).delete());
+    DB.staff = DB.staff.filter(x=>x.uid!==uid);
+    await logAudit('staff_removed', s.name+' ('+s.mobile+') access removed');
+    render();
+    showToast('Access removed for '+s.name);
+    if(AUTH_USER && uid===AUTH_USER.uid){ staffSignOut(); }
+  }catch(e){
+    console.error('remove staff account failed', e);
+    showToast('Could not remove — check your connection and try again');
+  }
+}
+
 
 /* =========================================================
    NOTIFICATIONS (in-app only — see Settings for why there is
@@ -3372,6 +3768,12 @@ function forceShowApp(reason){
   if(sp) sp.classList.add('hide');
   if(reason) console.warn('App shown via watchdog:', reason);
 }
+function showAppNow(){
+  __appRendered = true;
+  render();
+  const sp = document.getElementById('splash');
+  if(sp) sp.classList.add('hide');
+}
 async function init(){
   /* Watchdog: whatever happens (slow Firebase, network stall, an unexpected
      throw), the app must appear. After 10s we force-render with whatever
@@ -3379,22 +3781,58 @@ async function init(){
   const watchdog = setTimeout(()=>forceShowApp('init exceeded 3s'), 3000);
   try{
   try{ state.residentMode = new URLSearchParams(location.search).get('resident')==='1'; }catch(e){}
+
   if(state.residentMode){
+    // Public complaint link: no login, ever. A lightweight anonymous
+    // Firestore session (create-only under the current rules) plus theme
+    // and keyboard handling is all this path needs — it never touches
+    // loadAll(), sync, audit pruning, or task popups.
     state.view = 'defects';
     state._residentFormOpen = true;
     document.body.classList.add('resident-mode');
+    await initTheme();
+    await ensureResidentAuth();
+    showAppNow();
+    bindKeyboardAvoidance();
+    clearTimeout(watchdog);
+    return;
   }
-  await Promise.all([initTheme(), loadAll()]);
-  state.resumeDraft = await storeGetPersonal('draftautosave');
-  const savedUser = await storeGetPersonal('currentUserId');
-  if(savedUser && savedUser.value){
-    const m = DB.members.find(x=>x.id===savedUser.value);
-    if(m){
-      state.currentUser = {id:m.id, name:m.name, mobile:m.mobile||'', role:m.role};
-      state.role = m.role;
-      if(m.role==='admin') state.adminUnlocked = true;
+
+  // Staff path: verify who's actually signed in (Firebase Auth persists
+  // real sessions on its own — this is not the old "remember the last
+  // picked name" trick) before loading or showing any operational data.
+  await initTheme();
+  state._authScreen = 'checking';
+  const db = await initFirebase();
+  let authed = false;
+  if(db && firebase.auth().currentUser){
+    const staffData = await loadStaffDoc(firebase.auth().currentUser.uid);
+    if(staffData){
+      AUTH_USER = firebase.auth().currentUser;
+      STAFF_DOC = staffData;
+      state.currentUser = {name: staffData.name, mobile: staffData.mobile, role: staffData.role};
+      state.role = staffData.role;
+      state.adminUnlocked = (staffData.role==='admin');
+      authed = true;
+    } else {
+      // Account exists in Firebase Auth but has no staff record (e.g. it
+      // was removed by an admin) — don't leave it half signed-in.
+      try{ await firebase.auth().signOut(); }catch(e){}
     }
   }
+
+  if(!authed){
+    state._authScreen = db ? (await isBootstrapOpen() ? 'bootstrap' : 'login') : 'login';
+    showAppNow();
+    bindAuthInputs();
+    bindKeyboardAvoidance();
+    clearTimeout(watchdog);
+    return;
+  }
+  state._authScreen = null;
+
+  await loadAll();
+  state.resumeDraft = await storeGetPersonal('draftautosave');
   try{
     const q = await storeGetPersonal('syncqueue');
     SYNC_QUEUE = (q && q.items) ? q.items : [];
@@ -3404,15 +3842,13 @@ async function init(){
   if(SYNC_QUEUE.length) flushSyncQueue();
   window.addEventListener('online', ()=>{ flushSyncQueue().then(n=>{ if(n && !state.residentMode) refreshData(false); }); });
   loadExternalLibs();
-  __appRendered = true;
   state._isNavigating = true;
-  render();
-  document.getElementById('splash').classList.add('hide');
+  showAppNow();
   startBackgroundSync();
   pruneAuditLog();
   bindKeyboardAvoidance();
   registerLibraryCacheSW();
-  if(!state.residentMode) checkForTaskPopup();
+  checkForTaskPopup();
   }catch(e){
     console.error('init failed — showing app with local data', e);
   }finally{
@@ -3427,6 +3863,16 @@ function isIOSDevice(){
   // iPadOS 13+ reports its user-agent as "Macintosh" for site-compatibility
   // reasons; a touch-capable "Mac" is actually an iPad in disguise.
   return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+}
+// Links shared over WhatsApp/Instagram/Facebook etc. often get opened inside
+// that app's own in-app browser rather than real Safari. iOS deliberately
+// gives in-app browsers no "Add to Home Screen" option at all (there is no
+// Share button, or the one that's there doesn't have it) — no amount of app
+// code can add it back. The only fix is telling the user to reopen the page
+// in actual Safari first. This list is best-effort UA sniffing, not exhaustive.
+function isInAppBrowser(){
+  var ua = navigator.userAgent || '';
+  return /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|WhatsApp|TikTok|Snapchat|LinkedInApp|Twitter|GSA\/|Threads/i.test(ua);
 }
 function isPwaInstalled(){
   return window.matchMedia('(display-mode: standalone)').matches
@@ -3456,6 +3902,14 @@ function closeInstallPrompt(){
   state._installOpen = false;
   renderModalLayer();
 }
+// Manual entry point (Settings → App Install button). Unlike
+// maybeShowInstallPrompt(), this ignores the snooze/never flags — if
+// someone deliberately taps "Install", they should see the instructions
+// even if the auto-popup was dismissed days ago.
+function openInstallHelp(){
+  state._installOpen = true;
+  renderModalLayer();
+}
 async function triggerPwaInstall(){
   if(isPwaInstalled()) { state._installOpen=false; renderModalLayer(); return; }
   if(_pwaPrompt){
@@ -3469,7 +3923,11 @@ async function triggerPwaInstall(){
     state._installOpen = false;
     render();
   } else if(isIOSDevice()){
-    showToast('Neeche Share button dabao, phir "Add to Home Screen" chuno');
+    if(isInAppBrowser()){
+      showToast('Pehle "•••" ya menu se "Open in Safari" chuno, phir Add to Home Screen karo');
+    } else {
+      showToast('Neeche Share button dabao, phir "Add to Home Screen" chuno');
+    }
   } else {
     showToast('Chrome menu se Install app dabao');
   }
@@ -3632,17 +4090,10 @@ document.addEventListener('click', (e)=>{
    ROLE / NAV / RENDER ROOT
 ========================================================= */
 function setRole(r){
-  if(r==='admin'){
-    if(!state.adminUnlocked){ requestAdminSwitch(); return; }
-    const admins = DB.members.filter(m=>m.role==='admin');
-    if(admins.length && (!state.currentUser || state.currentUser.role!=='admin')){ openUserPicker('admin'); return; }
-    if(!admins.length && state.currentUser && state.currentUser.role!=='admin'){ state.currentUser=null; storeDeletePersonal('currentUserId'); }
-    state.role = r; state.view='home'; state._isNavigating=true; render();
-    return;
-  }
-  const sups = DB.members.filter(m=>m.role==='supervisor');
-  if(sups.length && (!state.currentUser || state.currentUser.role!=='supervisor')){ openUserPicker('supervisor'); return; }
-  if(!sups.length && state.currentUser && state.currentUser.role!=='supervisor'){ state.currentUser=null; storeDeletePersonal('currentUserId'); }
+  if(r==='admin'){ requestAdminSwitch(); return; }
+  // Viewing as supervisor is available to any signed-in staff member —
+  // admins previewing this way keep their real (admin-level) Firestore
+  // access; it only changes which nav items/features are shown.
   state.role = r; state.view='home'; state._isNavigating=true; render();
 }
 function goto(view, extra){
@@ -3680,6 +4131,19 @@ function render(){
     admBtn.innerHTML = icon('shield',13)+' '+(state.lang==='hi'?'एडमिन':'Admin');
   }
   const app = document.getElementById('app');
+
+  // Auth gate: staff must be signed in (real Firebase Auth + a staff/{uid}
+  // doc) before any operational view, nav, or modal renders. Residents on
+  // the public ?resident=1 link never set _authScreen, so this never
+  // affects them.
+  if(!state.residentMode && state._authScreen){
+    app.innerHTML = repairText(loginGateHtml());
+    const sn = document.getElementById('sidenav'); if(sn) sn.innerHTML = '';
+    const bn = document.getElementById('bottomnav'); if(bn) bn.innerHTML = '';
+    const ml = document.getElementById('modalLayer'); if(ml) ml.innerHTML = '';
+    return;
+  }
+
   let html = '';
   if(state.residentMode) state.view = 'residents';
   switch(state.view){
@@ -3803,7 +4267,7 @@ function renderSideNav(){
     + '<div class="sidenav-spacer"></div>'
     + '<div class="sidenav-foot" '+(state.currentUser?'onclick="switchUser()" style="cursor:pointer;"':'')+'>'
       + (state.currentUser
-          ? icon('users',11)+' '+esc(state.currentUser.name)+' · Switch user'
+          ? icon('users',11)+' '+esc(state.currentUser.name)+' · Sign out'
           : (state.role==='admin' ? (state.adminUnlocked?'Admin unlocked':'Admin') : 'Supervisor mode'))
     + '</div>';
 }
@@ -3979,12 +4443,12 @@ function missedInspectionBanner(){
       + '\n\nKripya abhi complete karein. 🙏'
     );
     if(supervisors.length === 1){
-      return '<a href="https://wa.me/91'+supervisors[0].mobile+'?text='+waMsg+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:#25D366;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none;">'
+      return '<a href="https://wa.me/91'+esc(supervisors[0].mobile)+'?text='+waMsg+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:#25D366;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;text-decoration:none;">'
         + '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.555 4.116 1.524 5.845L.057 23.943l6.294-1.652A11.93 11.93 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.78 9.78 0 01-5.012-1.378l-.36-.213-3.733.98.997-3.646-.234-.374A9.78 9.78 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg>'
         + ' WA Reminder — '+esc(supervisors[0].name)+'</a>';
     }
     return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">'
-      + supervisors.map(s=>'<a href="https://wa.me/91'+s.mobile+'?text='+waMsg+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;background:#25D366;color:#fff;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:700;text-decoration:none;">'
+      + supervisors.map(s=>'<a href="https://wa.me/91'+esc(s.mobile)+'?text='+waMsg+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;background:#25D366;color:#fff;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:700;text-decoration:none;">'
         + '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.555 4.116 1.524 5.845L.057 23.943l6.294-1.652A11.93 11.93 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.78 9.78 0 01-5.012-1.378l-.36-.213-3.733.98.997-3.646-.234-.374A9.78 9.78 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg>'
         + esc(s.name)+'</a>').join('')
       + '</div>';
@@ -5544,6 +6008,8 @@ function renderModalLayer(){
   if(state._resolveOpen){ layer.innerHTML = resolutionModal(state._resolveOpen); return; }
   if(state._userPickerRole){ layer.innerHTML = userPickerModal(state._userPickerRole); return; }
   if(state._newMemberOpen){ layer.innerHTML = newMemberModal(); return; }
+  if(state._newStaffOpen){ layer.innerHTML = newStaffAccountModal(); return; }
+  if(state._editStaffOpen){ layer.innerHTML = editStaffAccountModal(); return; }
   if(state._newTaskOpen){ layer.innerHTML = newTaskModal(); return; }
   if(state._taskCompleteOpen){ layer.innerHTML = taskCompleteModal(state._taskCompleteOpen); return; }
   if(state._taskPopup){ layer.innerHTML = taskPopupModal(state._taskPopup); return; }
@@ -5554,15 +6020,18 @@ function renderModalLayer(){
   if(state._confirmOpen){ layer.innerHTML = confirmModal(state._confirmOpen); return; }
   layer.innerHTML = '';
 }
-function closeModals(){ state.showPinModal=false; state._editOpen=null; state._newDefectOpen=false; state._resolveOpen=null; state._resolveAfterPhoto=null; state._newTaskOpen=false; state._taskCompleteOpen=null; state._taskCompletePhoto=null; state._userPickerRole=null; state._newMemberOpen=null; state.pinPurpose=null; state._pendingMemberId=null; state._confirmOpen=null; state._installOpen=false; state._issuePopup=null; state._issueDraft=null; state._issueAi=null; state._waShare=null; state._newVendorOpen=false; state._newSosOpen=false; state._sosMedia=[]; state._sosDetail=null; render(); }
+function closeModals(){ state.showPinModal=false; state._editOpen=null; state._newDefectOpen=false; state._resolveOpen=null; state._resolveAfterPhoto=null; state._newTaskOpen=false; state._taskCompleteOpen=null; state._taskCompletePhoto=null; state._userPickerRole=null; state._newMemberOpen=null; state._newStaffOpen=null; state._newStaffError=null; state._editStaffOpen=null; state._editStaffError=null; state.pinPurpose=null; state._pendingMemberId=null; state._confirmOpen=null; state._installOpen=false; state._issuePopup=null; state._issueDraft=null; state._issueAi=null; state._waShare=null; state._newVendorOpen=false; state._newSosOpen=false; state._sosMedia=[]; state._sosDetail=null; render(); }
 
 function installPromptModal(){
   const ios = isIOSDevice();
+  const inApp = ios && isInAppBrowser();
   return '<div class="modal-backdrop" onclick="if(event.target===this) closeInstallPrompt()"><div class="modal-sheet card">'
     + '<div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;"><div class="tile-icon accent" style="width:42px;height:42px;">'+icon('device-mobile-down',20)+'</div><div><b style="font-size:15px;">Install app</b><div style="font-size:12px; color:var(--ink-soft); margin-top:2px;">Chrome logo ke bina app list me khulega</div></div></div>'
-    + (ios
-      ? '<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin-top:10px;">Is iPhone/iPad par install karne ke liye: neeche '+icon('share',13)+' <b>Share</b> button dabao, phir <b>"Add to Home Screen"</b> chuno.</p>'
-      : '<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin-top:10px;">Is phone par is app ko full app ki tarah install kar sakte hain. Install hone ke baad ye message nahi dikhega.</p>')
+    + (inApp
+      ? '<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin-top:10px;">Ye link kisi doosre app (WhatsApp/Instagram/Facebook) ke andar khula hai — yahan se install nahi ho sakta. Upar <b>"•••"</b> ya menu button dabao, <b>"Open in Safari"</b> chuno, phir Safari me neeche '+icon('share',13)+' <b>Share</b> → <b>"Add to Home Screen"</b> se install karo.</p>'
+      : (ios
+        ? '<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin-top:10px;">Is iPhone/iPad par install karne ke liye: neeche '+icon('share',13)+' <b>Share</b> button dabao, phir <b>"Add to Home Screen"</b> chuno.</p>'
+        : '<p style="font-size:13px; color:var(--ink-soft); line-height:1.5; margin-top:10px;">Is phone par is app ko full app ki tarah install kar sakte hain. Install hone ke baad ye message nahi dikhega.</p>'))
     + '<div class="btn-row" style="margin-top:14px;">'
       + (ios
         ? '<button class="btn btn-primary" onclick="closeInstallPrompt()">Samajh gaya</button>'
@@ -5587,21 +6056,12 @@ function runConfirm(){
 }
 
 function pinModal(){
-  const isChange2 = state.pinPurpose==='change2';
-  const isMemberLogin = state.pinPurpose==='memberlogin';
-  const pendingMember = isMemberLogin ? DB.members.find(x=>x.id===state._pendingMemberId) : null;
-  const titleText = isChange2 ? 'Set New PIN' : state.pinPurpose==='change' ? 'Confirm Current PIN' : isMemberLogin ? ('PIN for '+(pendingMember?pendingMember.name:'')) : 'Admin PIN';
+  const pendingMember = DB.members.find(x=>x.id===state._pendingMemberId);
+  const titleText = 'PIN for '+(pendingMember?pendingMember.name:'');
   return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
-    + '<div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;"><div class="tile-icon accent" style="width:38px;height:38px;">'+icon('lock',18)+'</div><div><b style="font-size:15px;">'+titleText+'</b><div style="font-size:11.5px; color:var(--ink-soft);">Convenience lock only — not secure authentication.</div></div></div>'
-    + (isChange2 ?
-      '<div class="field" style="margin-top:12px;"><label class="field-label">New PIN (min 4 digits)</label><input type="password" inputmode="numeric" id="newPin1" placeholder="••••"></div>'
-      + '<div class="field"><label class="field-label">Confirm New PIN</label><input type="password" inputmode="numeric" id="newPin2" placeholder="••••"></div>'
-      + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="submitNewPin(document.getElementById(\'newPin1\').value, document.getElementById(\'newPin2\').value)">Save</button></div>'
-      :
-      '<div class="field" style="margin-top:12px;"><input type="password" inputmode="numeric" id="pinEntry" placeholder="Enter PIN" style="text-align:center; font-size:22px; letter-spacing:.3em;"></div>'
-      + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="submitPin(document.getElementById(\'pinEntry\').value)">Unlock</button></div>'
-      + (isMemberLogin ? '' : '<p style="font-size:11px; color:var(--ink-faint); margin-top:10px;">Default PIN is 1234 until changed in Settings.</p>')
-    )
+    + '<div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;"><div class="tile-icon accent" style="width:38px;height:38px;">'+icon('lock',18)+'</div><div><b style="font-size:15px;">'+titleText+'</b><div style="font-size:11.5px; color:var(--ink-soft);">Just identifies who\'s filling this in — not a security check.</div></div></div>'
+    + '<div class="field" style="margin-top:12px;"><input type="password" inputmode="numeric" id="pinEntry" placeholder="Enter PIN" style="text-align:center; font-size:22px; letter-spacing:.3em;"></div>'
+    + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="submitPin(document.getElementById(\'pinEntry\').value)">Continue</button></div>'
     + '</div></div>';
 }
 function bindPinInputs(){
@@ -6619,6 +7079,11 @@ function viewSettings(){
     + '<div class="settings-row"><div class="settings-row-text"><b>'+(state.lang==='hi'?'मोड बदलें':'Switch mode')+'</b><span>'+(state.lang==='hi'?'एडमिन के लिए PIN चाहिए':'Admin needs the PIN')+'</span></div>'
       + '<div class="role-switch"><button class="'+(state.role==='supervisor'?'active':'')+'" onclick="setRole(\'supervisor\')">'+icon('users',13)+' '+(state.lang==='hi'?'सुपरवाइज़र':'Supervisor')+'</button><button class="'+(state.role==='admin'?'active':'')+'" onclick="requestAdminSwitch()">'+icon('shield',13)+' '+(state.lang==='hi'?'एडमिन':'Admin')+'</button></div>'
     + '</div></div>'
+    + '<div class="card"><span class="section-label">'+icon('device-mobile-down',13)+' App Install</span>'
+    + (isPwaInstalled()
+        ? '<div class="settings-row"><div class="settings-row-text"><b>Installed</b><span>Home screen se already khulta hai, full app ki tarah</span></div><span style="color:var(--ok); font-weight:700; display:flex; align-items:center;">'+icon('check',16)+'</span></div>'
+        : '<div class="settings-row"><div class="settings-row-text"><b>Home screen par install karo</b><span>'+(isIOSDevice()?'iPhone/iPad par':'Is phone par')+' full app jaisa khulega — address bar nahi dikhega, offline bhi chalega</span></div><button class="btn btn-sm btn-primary" onclick="openInstallHelp()">Install</button></div>')
+    + '</div>'
     + '<div class="card"><span class="section-label">AI Settings</span>'
     + (function(){
         var val = CLAUDE_API_KEY||'';
@@ -6652,21 +7117,26 @@ function viewSettings(){
         ).join('')
     + '</div>'
     + '<div class="card"><span class="section-label">'+icon('lock',13)+' Admin Access</span>'
-    + '<div class="settings-row"><div class="settings-row-text"><b>Status</b><span>'+(state.adminUnlocked?'Unlocked on this device':'Locked')+'</span></div>'+(state.adminUnlocked? '<button class="btn btn-sm btn-ghost" onclick="lockAdmin()">Lock now</button>' : '<button class="btn btn-sm btn-ghost" onclick="requestAdminSwitch()">Unlock</button>')+'</div>'
-    + (state.adminUnlocked? '<div class="settings-row"><div class="settings-row-text"><b>Change PIN</b><span>Applies to all devices — this is a shared convenience lock</span></div><button class="btn btn-sm btn-ghost" onclick="state.pinPurpose=\'change\'; state.showPinModal=true; render();">Change</button></div>' : '')
-    + '<p class="chart-fallback-note">This PIN deters accidental role switches on a shared device. It is not secure authentication — anyone with browser developer tools can bypass it. Real access control needs a proper backend with server-verified logins.</p>'
+    + '<div class="settings-row"><div class="settings-row-text"><b>Signed in as</b><span>'+esc(state.currentUser?state.currentUser.name:'—')+' · '+esc(state.currentUser?state.currentUser.mobile:'')+' · '+(state.role==='admin'?'Admin':'Supervisor')+'</span></div><button class="btn btn-sm btn-ghost" onclick="staffSignOut()">Sign out</button></div>'
+    + '<p class="chart-fallback-note">This is a real, server-verified sign-in — Firestore itself checks your account before allowing any read or write, not just this screen. Only people an Admin has added under Staff Accounts below can sign in at all.</p>'
     + '</div>'
+    + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('users',13)+' Staff Accounts (sign-in)</span>'
+        + '<p style="font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;">Everyone who can actually sign in and access the app\'s data. Separate from the "Team Members" list above, which is just an auto-fill label and doesn\'t grant access to anything.</p>'
+        + staffAccountsListHtml()
+        + '<div class="btn-row" style="margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="openNewStaffAccount()">'+icon('plus',13)+' Add Staff Account</button></div>'
+        + '<p style="font-size:11px; color:var(--ink-faint); margin-top:8px;">There\'s no self-service "forgot password" yet — if someone loses theirs, remove and re-add them with a new password.</p>'
+      + '</div>' : '')
     + '<div class="card"><span class="section-label">'+icon('bell',13)+' Notifications</span>'
     + '<div class="settings-row"><div class="settings-row-text"><b>In-app alerts</b><span>Bell icon shows overdue & breach defects</span></div><label class="switch"><input type="checkbox" checked disabled><span class="switch-track"></span></label></div>'
     + '<div class="settings-row"><div class="settings-row-text"><b>Push / WhatsApp / Email</b><span>Not connected — needs a backend + messaging provider</span></div><label class="switch"><input type="checkbox" disabled><span class="switch-track"></span></label></div>'
     + '<p class="chart-fallback-note">This app can only notify people while this page is open in a browser. Sending real push, WhatsApp, or email alerts requires a server with API keys for a provider (e.g. FCM, WhatsApp Business Cloud API, SendGrid) — that\'s a backend project, not something a browser file can do safely.</p>'
     + '</div>'
-    + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('users',13)+' Team Members</span>'
+    + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('users',13)+' Team Members (auto-fill list)</span>'
         + teamMembersHtml()
         + (canManageTeam()
             ? '<div class="btn-row" style="margin-top:10px;"><button class="btn btn-sm btn-ghost" onclick="openNewMember(\'supervisor\')">'+icon('plus',13)+' Add Supervisor</button><button class="btn btn-sm btn-ghost" onclick="openNewMember(\'admin\')">'+icon('plus',13)+' Add Admin</button></div>'
-            : '<p style="font-size:11.5px; color:var(--ink-faint); margin-top:8px;">Unlock Admin mode to add, edit, or remove team members.</p>')
-        + '<p class="chart-fallback-note">Adding people here lets them log in by picking their name from a list instead of typing it fresh every time — their name and mobile auto-fill new inspections. PINs here are the same convenience-only lock used elsewhere in this app, not secure authentication.</p>'
+            : '<p style="font-size:11.5px; color:var(--ink-faint); margin-top:8px;">Sign in as Admin to add, edit, or remove team members.</p>')
+        + '<p class="chart-fallback-note">This list just auto-fills a name/mobile into new inspections — it doesn\'t grant sign-in access to anything. For that, see Staff Accounts below.</p>'
       + '</div>' : '')
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('wrench',13)+' Completed Tasks</span>' + completedTasksHtml() + '</div>' : '')
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('clipboard',13)+' Audit Log</span>' + auditLogHtml() + '</div>' : '')
@@ -6688,9 +7158,9 @@ function viewSettings(){
    rows. Purely cosmetic — doesn't change what's logged or its data. */
 function auditActionCategory(action){
   if(action==='data_cleared') return 'danger';
-  if(action==='defect_logged' || action==='defect_status' || action==='defect_edited' || action==='task_assigned' || action==='member_removed') return 'warn';
-  if(action==='inspection_submitted' || action==='defect_resolved' || action==='task_completed' || action==='member_added') return 'ok';
-  return 'info'; // pin_changed, report_generated, backup_exported, member_edited, etc.
+  if(action==='defect_logged' || action==='defect_status' || action==='defect_edited' || action==='task_assigned' || action==='member_removed' || action==='staff_removed') return 'warn';
+  if(action==='inspection_submitted' || action==='defect_resolved' || action==='task_completed' || action==='member_added' || action==='staff_added') return 'ok';
+  return 'info'; // report_generated, backup_exported, member_edited, staff_edited, etc.
 }
 function auditLogHtml(){
   const entries = DB.audit.slice(0,40);

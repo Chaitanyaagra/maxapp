@@ -1,5 +1,5 @@
-const C='mhm-v21',R='mhm-r21';
-const PRE=['./','./index.html','./manifest.json','./icon-192.png','./back-button-handler.js'];
+const C='mhm-v22',R='mhm-r22';
+const PRE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./icon-192-maskable.png','./icon-512-maskable.png','./apple-touch-icon-180.png','./apple-touch-icon-167.png','./apple-touch-icon-152.png','./apple-touch-icon-120.png','./back-button-handler.js'];
 const CDN=['cdnjs.cloudflare.com','fonts.googleapis.com','fonts.gstatic.com','www.gstatic.com'];
 const SKIP=['firestore.googleapis.com','firebase.googleapis.com','identitytoolkit.googleapis.com','securetoken.googleapis.com'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(PRE)).then(()=>self.skipWaiting()).catch(()=>{}));});

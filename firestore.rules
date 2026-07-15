@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- helpers ----
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function staffDoc() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+    function isStaff() {
+      return isSignedIn() && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+    function isAdmin() {
+      return isStaff() && staffDoc().data.role == 'admin';
+    }
+    function bootstrapOpen() {
+      return !exists(/databases/$(database)/documents/app_meta/bootstrap);
+    }
+
+    // ---- one-time setup lock ----
+    // The app writes this the instant the very first Admin account is
+    // created. While it doesn't exist, exactly one person can bootstrap
+    // themselves in as Admin (see /staff/{uid} below); the moment it's
+    // written, that path closes for everyone, permanently — there is no
+    // rule that can ever delete or overwrite it.
+    match /app_meta/bootstrap {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && bootstrapOpen() && request.resource.data.usedBy == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ---- staff directory: who can sign in, and their role ----
+    // This is what access to everything else is keyed on. A signed-in
+    // Firebase Auth account with no matching document here can read/write
+    // nothing except (for anonymous resident sessions) new complaints.
+    match /staff/{uid} {
+      allow read: if isStaff();
+      allow create: if isSignedIn() && (
+        // first-ever account, while bootstrap is open, becomes Admin
+        (bootstrapOpen() && uid == request.auth.uid && request.resource.data.role == 'admin')
+        // after that, only an existing Admin can add more staff
+        || isAdmin()
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // ---- all operational app data (inspections, defects, resident
+    // complaints, tasks, vendors, audit log, members roster, settings) ----
+    // Everything the app stores lives in this one collection as
+    // {value: "<json string>", updatedAt}, so rules can't validate
+    // individual fields inside that JSON — only where a write can land,
+    // its overall size, and whether it's a brand-new document.
+    match /mhm_records/{docId} {
+      // Any signed-in staff account (Admin or Supervisor) — full access.
+      // This app doesn't currently split Firestore-level permissions
+      // between the two roles; Admin vs Supervisor is enforced as a UI
+      // feature-gate on top of this (team management, audit log, etc).
+      allow read, update, delete: if isStaff();
+
+      // Public resident-complaint link (?resident=1): create-only, and
+      // only brand-new "defect:*" documents — matches exactly what that
+      // page does today (submit a complaint) and nothing else. No read,
+      // no list, no update, no delete for this identity, ever.
+      allow create: if isSignedIn()
+                    && !isStaff()
+                    && docId.matches('defect:.*')
+                    && request.resource.size() < 900000;
+    }
+  }
+}
