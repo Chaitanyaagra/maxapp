@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-<meta name="theme-color" content="#0F4C4C">
+<meta name="theme-color" content="#0E4F4A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -24,76 +24,89 @@
 <script>if('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){});</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800;900&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ===== CSS Variables (Premium theme) ===== */
 :root {
   --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', 'Manrope', Georgia, serif;
   --font-mono: 'IBM Plex Mono', monospace;
   
-  /* Brand palette */
-  --brand: #0F4C4C; --brand-dark: #072e2e; --brand-light: #1a6b6b;
-  --brand-tint: #d4f0f0;
+  /* Brand palette — refined deep emerald-teal */
+  --brand: #0E4F4A; --brand-dark: #063834; --brand-light: #1E7F76;
+  --brand-tint: #E4F3F0;
+  --brand-glow: rgba(14, 79, 74, 0.12);
   
-  /* Gold (muted champagne for luxury) */
+  /* Champagne gold (warmer & more luxurious) */
   --gold: #B8912E;
-  --gold-light: #d4af37;
+  --gold-light: #D4AF37;
+  --gold-soft: #E9CE7B;
+  --gold-tint: #FBF3DC;
   
-  /* Semantic colors */
-  --ok: #1e8e5a; --ok-tint: #d4edda;
-  --notok: #c84545; --notok-tint: #ffe6e6;
-  --warn: #B4530F; --warn-tint: #fff3cd;
-  --danger: #b91c1c; --danger-tint: #fee2e2;
-  --critical: #c84545; --critical-tint: #fee2e2;
-  --accent1: #1d8a8a; --accent2: #087e8b;
+  /* Semantic colors — softer and more refined */
+  --ok: #1F8A5A; --ok-tint: #DFF3E7;
+  --notok: #C24747; --notok-tint: #FBE4E4;
+  --warn: #B4530F; --warn-tint: #FCEBD4;
+  --danger: #B91C1C; --danger-tint: #FDE4E4;
+  --critical: #C24747; --critical-tint: #FDE4E4;
+  --accent1: #1E7F76; --accent2: #087E8B;
   
-  /* Neutral scale */
-  --bg: #f8f9fa;
-  --surface: #ffffff;
-  --surface-2: #f3f4f6;
-  --border: #e5e7eb;
-  --ink: #111827;
-  --ink-soft: #6b7280;
-  --ink-faint: #9ca3af;
+  /* Neutral scale — warm off-white with subtle cream cast */
+  --bg: #F7F5F0;
+  --surface: #FFFFFF;
+  --surface-2: #F0EDE5;
+  --border: #E6E1D4;
+  --ink: #0F1B1A;
+  --ink-soft: #4E5E5D;
+  --ink-faint: #8A9694;
   
   /* Glass/frosted effect */
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.48);
+  --glass-bg: rgba(255, 252, 245, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-blur: blur(20px) saturate(1.6);
   
-  /* Premium shadows (layered depth) */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.16), 0 4px 8px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.12);
+  /* Premium shadows — brand-tinted layered depth */
+  --shadow-xs: 0 1px 2px rgba(14, 79, 74, 0.05);
+  --shadow-sm: 0 2px 6px rgba(14, 79, 74, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 20px rgba(14, 79, 74, 0.09), 0 3px 6px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 20px 40px rgba(14, 79, 74, 0.14), 0 6px 12px rgba(0, 0, 0, 0.06);
+  --shadow-xl: 0 30px 60px rgba(14, 79, 74, 0.18), 0 12px 20px rgba(0, 0, 0, 0.08);
+  --shadow-gold: 0 8px 24px rgba(184, 145, 46, 0.25);
   
-  /* Dark mode overrides */
-  --radius: 14px;
+  /* Radius scale */
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-lg: 22px;
 }
 
 html[data-theme="dark"] {
-  --bg: #0f172a;
-  --surface: #1a1f3a;
-  --surface-2: #232d4a;
-  --border: #334155;
-  --ink: #f1f5f9;
-  --ink-soft: #cbd5e1;
-  --ink-faint: #94a3b8;
-  --glass-bg: rgba(15, 23, 42, 0.68);
-  --glass-border: rgba(148, 163, 184, 0.2);
+  --bg: #0A1414;
+  --surface: #131F1E;
+  --surface-2: #1B2A28;
+  --border: #26403D;
+  --ink: #F1EFE8;
+  --ink-soft: #B8C5C2;
+  --ink-faint: #7C8B88;
+  --glass-bg: rgba(11, 22, 21, 0.68);
+  --glass-border: rgba(94, 234, 212, 0.14);
+  --brand: #2FA69A;
+  --brand-light: #4FD1C5;
+  --brand-tint: rgba(47, 166, 154, 0.16);
+  --brand-glow: rgba(94, 234, 212, 0.18);
   
-  /* Stronger shadows for dark mode depth */
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.55), 0 4px 8px rgba(0, 0, 0, 0.45);
-  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.65), 0 8px 16px rgba(0, 0, 0, 0.5);
+  /* Stronger, warmer shadows for dark mode depth */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.5), 0 3px 6px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.6), 0 6px 12px rgba(0, 0, 0, 0.45);
+  --shadow-xl: 0 30px 60px rgba(0, 0, 0, 0.7), 0 12px 20px rgba(0, 0, 0, 0.5);
+  --shadow-gold: 0 8px 24px rgba(212, 175, 55, 0.22);
 
   /* Dark tints — banners, chips & badges keep readable contrast */
-  --brand-tint: rgba(45, 155, 155, 0.16);
   --ok-tint: rgba(52, 168, 110, 0.16);
   --warn-tint: rgba(217, 119, 6, 0.16);
   --danger-tint: rgba(220, 70, 70, 0.16);
   --critical-tint: rgba(220, 70, 70, 0.2);
+  --gold-tint: rgba(212, 175, 55, 0.12);
 }
 
 * { box-sizing: border-box; }
@@ -1839,6 +1852,745 @@ html[data-theme="dark"] .nav-btn.nav-cta.active{ color:var(--brand-fg, #5eead4);
 }
 .section-label svg { opacity: .7; }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   PREMIUM v2 — Elegant residential-society inspection refinements
+   (Deep emerald + champagne gold, refined depth, editorial typo)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Global body — subtle ambient wash so surfaces feel like paper cards */
+body {
+  background:
+    radial-gradient(1200px 620px at 100% -10%, rgba(184, 145, 46, 0.05), transparent 55%),
+    radial-gradient(900px 540px at -10% 20%, rgba(14, 79, 74, 0.06), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+html[data-theme="dark"] body {
+  background:
+    radial-gradient(1200px 620px at 100% -10%, rgba(212, 175, 55, 0.06), transparent 55%),
+    radial-gradient(900px 540px at -10% 20%, rgba(47, 166, 154, 0.10), transparent 60%),
+    var(--bg);
+}
+
+/* Editorial display typography for major headings */
+h1, h2, .pagetitle, .brand-title, .splash-title, .empty-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+}
+h3, h4 { font-family: var(--font-body); letter-spacing: -0.015em; }
+
+/* ── Splash: refined, editorial ──────────────────────────────── */
+#splash {
+  background:
+    radial-gradient(600px 400px at 30% 25%, rgba(184, 145, 46, 0.22), transparent 60%),
+    radial-gradient(700px 500px at 80% 90%, rgba(30, 127, 118, 0.35), transparent 60%),
+    linear-gradient(165deg, #052824 0%, #0E4F4A 55%, #063834 100%);
+}
+#splash img {
+  width: 108px; height: 108px;
+  background: #fff;
+  padding: 14px;
+  border-radius: 28px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(184, 145, 46, 0.15);
+}
+#splash .splash-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.35);
+}
+#splash .splash-sub {
+  color: rgba(233, 206, 123, 0.85);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .28em;
+}
+#splash .splash-bar {
+  width: 160px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(184, 145, 46, 0.25);
+}
+#splash .splash-bar-fill {
+  background: linear-gradient(90deg, #D4AF37, #E9CE7B, #D4AF37);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.6);
+}
+
+/* ── Topbar — light frosted glass with subtle gold hairline ── */
+.topbar {
+  padding: calc(12px + env(safe-area-inset-top)) 18px 14px;
+  background: linear-gradient(180deg, rgba(255,252,245,0.85) 0%, rgba(255,252,245,0.72) 100%);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow:
+    0 1px 0 rgba(184,145,46,0.14),
+    0 8px 32px rgba(14, 79, 74, 0.08);
+}
+html[data-theme="dark"] .topbar {
+  background: linear-gradient(180deg, rgba(11,22,21,0.82) 0%, rgba(11,22,21,0.65) 100%);
+  border-bottom: 1px solid rgba(94, 234, 212, 0.14);
+  box-shadow:
+    0 1px 0 rgba(212, 175, 55, 0.14),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.brand-logo {
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #ffffff, #fbf7e9);
+  padding: 4px;
+  border: 1px solid rgba(184, 145, 46, 0.28);
+  box-shadow:
+    0 4px 12px rgba(14, 79, 74, 0.14),
+    inset 0 -1px 2px rgba(184, 145, 46, 0.14);
+}
+.brand-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+}
+.brand-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.icon-btn {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: rgba(255, 252, 245, 0.7);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  transition: transform .18s cubic-bezier(.34,1.56,.64,1), background .2s ease, box-shadow .2s ease;
+}
+.icon-btn:hover {
+  background: #fff;
+  border-color: rgba(184, 145, 46, 0.35);
+  box-shadow: var(--shadow-sm);
+}
+.icon-btn:active { transform: scale(0.94); }
+html[data-theme="dark"] .icon-btn {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(94, 234, 212, 0.14);
+}
+
+/* Role switch — refined pill */
+.role-switch {
+  background: rgba(255, 252, 245, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px;
+  box-shadow: inset 0 1px 2px rgba(14, 79, 74, 0.05);
+}
+.role-switch button.active {
+  background: linear-gradient(180deg, #1E7F76 0%, #0E4F4A 100%);
+  box-shadow:
+    0 4px 14px rgba(14, 79, 74, 0.32),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+/* ── App container: airy spacing ── */
+#app { padding: 20px 18px 28px; }
+.stack { gap: 14px; }
+.stat-grid { gap: 12px; }
+
+/* ── Card — hairline gold accent, refined depth ── */
+.card {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+  transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s ease, border-color .2s ease;
+}
+.card::before {
+  background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 45%);
+  opacity: 0.5;
+}
+html[data-theme="dark"] .card::before {
+  background: linear-gradient(135deg, rgba(94,234,212,0.06) 0%, transparent 45%);
+}
+.card-tight { padding: 14px 16px; }
+
+/* Section labels — editorial tick */
+.section-label {
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .18em;
+}
+.section-label::before {
+  content: '';
+  display: inline-block;
+  width: 18px; height: 1.5px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  margin-right: 4px;
+}
+
+/* ── Home tiles — luxury card with subtle sheen and gold micro-accent ── */
+.tile {
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.5), transparent 60%),
+    var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: transform .28s cubic-bezier(.16,1,.3,1), box-shadow .28s ease, border-color .2s ease;
+}
+.tile::before {
+  background: linear-gradient(135deg, rgba(184,145,46,0.06) 0%, transparent 45%);
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+.tile:hover::before { opacity: 1; }
+.tile:hover {
+  border-color: rgba(184,145,46,0.35);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+html[data-theme="dark"] .tile {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 60%), var(--surface);
+}
+html[data-theme="dark"] .tile:hover { border-color: rgba(212,175,55,0.35); }
+
+.tile-icon {
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--brand-tint), rgba(255,255,255,0.5));
+  color: var(--brand);
+  box-shadow:
+    0 6px 16px rgba(14,79,74,0.16),
+    inset 0 1px 0 rgba(255,255,255,0.5);
+  border: 1px solid rgba(14, 79, 74, 0.08);
+}
+html[data-theme="dark"] .tile-icon {
+  background: linear-gradient(135deg, rgba(94,234,212,0.14), rgba(94,234,212,0.04));
+  border-color: rgba(94, 234, 212, 0.2);
+  color: var(--brand-fg, #5eead4);
+}
+.tile-icon.accent {
+  background: linear-gradient(135deg, #E9CE7B 0%, #B8912E 100%);
+  color: #fff;
+  border-color: rgba(184, 145, 46, 0.5);
+  box-shadow: var(--shadow-gold), inset 0 1px 0 rgba(255,255,255,0.35);
+}
+.tile-title { font-size: 15px; font-weight: 800; letter-spacing: -0.015em; color: var(--ink); }
+.tile-sub { font-size: 12px; color: var(--ink-soft); margin-top: 3px; font-weight: 500; }
+
+/* ── Stat cards — editorial with premium accent bar ── */
+.stat-card {
+  padding: 16px;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.55), transparent 55%),
+    var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.stat-card::before {
+  height: 3px;
+  opacity: 1;
+  background: linear-gradient(90deg, var(--brand) 0%, var(--brand-light) 55%, transparent 100%);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.stat-card.danger::before { background: linear-gradient(90deg, var(--danger), #ef8f8f 60%, transparent); }
+.stat-card.warn::before { background: linear-gradient(90deg, var(--warn), #f5be7b 60%, transparent); }
+.stat-card.ok::before { background: linear-gradient(90deg, var(--ok), #7bd3a7 60%, transparent); }
+.stat-card.gold::before { background: linear-gradient(90deg, var(--gold), var(--gold-soft) 60%, transparent); }
+
+html[data-theme="dark"] .stat-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent 55%), var(--surface);
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(184, 145, 46, 0.35);
+}
+.stat-num {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .16em;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+.stat-card .stat-icon {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--brand-tint), rgba(255,255,255,0.4));
+  border: 1px solid rgba(14, 79, 74, 0.08);
+  box-shadow: 0 4px 10px rgba(14,79,74,0.14), inset 0 1px 0 rgba(255,255,255,0.55);
+}
+html[data-theme="dark"] .stat-card .stat-icon {
+  background: linear-gradient(135deg, rgba(94,234,212,0.14), rgba(94,234,212,0.04));
+  border-color: rgba(94, 234, 212, 0.2);
+}
+
+/* ── Buttons — refined with subtle sheen ── */
+.btn {
+  border-radius: 13px;
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  transition: transform .14s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease, background .2s ease, filter .2s ease;
+}
+.btn-primary {
+  background: linear-gradient(180deg, #1E7F76 0%, #0E4F4A 100%);
+  border: 1px solid #0E4F4A;
+  box-shadow:
+    0 8px 22px rgba(14, 79, 74, 0.32),
+    inset 0 1px 0 rgba(255,255,255,0.18),
+    inset 0 -1px 0 rgba(0,0,0,0.12);
+}
+.btn-primary:hover { filter: brightness(1.08); box-shadow: 0 10px 26px rgba(14,79,74,0.38), inset 0 1px 0 rgba(255,255,255,0.2); }
+.btn-accent {
+  background: linear-gradient(180deg, #D4AF37 0%, #B8912E 100%);
+  color: #fff;
+  border: 1px solid #a17e21;
+  box-shadow: var(--shadow-gold), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.btn-accent:hover { filter: brightness(1.06); }
+.btn-ghost {
+  background: rgba(255,252,245,0.6);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: #fff; border-color: rgba(184,145,46,0.35); }
+html[data-theme="dark"] .btn-ghost {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(94, 234, 212, 0.14);
+}
+.btn-danger {
+  background: linear-gradient(180deg, #dc3535 0%, #a91212 100%);
+  border: 1px solid #a91212;
+  box-shadow: 0 8px 22px rgba(185, 28, 28, 0.30), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+/* ── Bottom nav — refined glass + gold hairline ── */
+.bottomnav {
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(255,252,245,0.72) 0%, rgba(255,252,245,0.9) 100%);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-border);
+  box-shadow:
+    0 -1px 0 rgba(184, 145, 46, 0.18),
+    0 -12px 40px rgba(14, 79, 74, 0.12);
+}
+html[data-theme="dark"] .bottomnav {
+  background: linear-gradient(180deg, rgba(11,22,21,0.7) 0%, rgba(11,22,21,0.92) 100%);
+  border-top: 1px solid rgba(94, 234, 212, 0.14);
+  box-shadow: 0 -1px 0 rgba(212, 175, 55, 0.16), 0 -12px 40px rgba(0,0,0,0.55);
+}
+.nav-btn.active .nav-ico {
+  background: linear-gradient(135deg, rgba(14,79,74,0.14) 0%, rgba(184,145,46,0.10) 100%);
+  box-shadow:
+    0 4px 12px rgba(14,79,74,0.22),
+    inset 0 0 0 1px rgba(184, 145, 46, 0.28);
+}
+.nav-btn.active .nav-label { color: var(--brand); }
+.nav-btn.nav-cta .nav-ico {
+  background: linear-gradient(135deg, #1E7F76 0%, #0E4F4A 55%, #063834 100%);
+  box-shadow:
+    0 6px 18px rgba(14, 79, 74, 0.4),
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    inset 0 0 0 1px rgba(184, 145, 46, 0.3);
+}
+.nav-btn.nav-cta.active .nav-ico {
+  box-shadow:
+    0 6px 20px rgba(14, 79, 74, 0.5),
+    0 0 0 3px rgba(184, 145, 46, 0.22),
+    inset 0 1px 0 rgba(255,255,255,0.22);
+}
+
+/* ── Record card / defect card / floor card refinements ── */
+.record-card, .defect-card, .floor-card {
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.4), transparent 55%),
+    var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+html[data-theme="dark"] .record-card,
+html[data-theme="dark"] .defect-card,
+html[data-theme="dark"] .floor-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 55%), var(--surface);
+}
+.record-card:hover, .defect-card:hover {
+  border-color: rgba(184, 145, 46, 0.30);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.record-type {
+  background: linear-gradient(135deg, var(--gold-tint), rgba(255,255,255,0.4));
+  color: var(--gold);
+  border: 1px solid rgba(184, 145, 46, 0.28);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+html[data-theme="dark"] .record-type {
+  background: rgba(212, 175, 55, 0.14);
+  border-color: rgba(212, 175, 55, 0.3);
+  color: #F0D37B;
+}
+.record-title { font-size: 14.5px; font-weight: 800; letter-spacing: -0.01em; }
+
+/* Pill refinements */
+.pill {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 800;
+  font-size: 9.5px;
+  letter-spacing: .1em;
+}
+.badge { padding: 4px 10px; font-weight: 800; letter-spacing: .02em; }
+
+/* Defect card priority accents */
+.defect-card.priority-high { border-left: 3px solid var(--danger); box-shadow: var(--shadow-sm), inset 4px 0 8px rgba(185,28,28,0.05); }
+.defect-card.priority-medium { border-left: 3px solid var(--warn); box-shadow: var(--shadow-sm), inset 4px 0 8px rgba(180,83,15,0.05); }
+.defect-card.priority-low { border-left: 3px solid var(--ink-faint); }
+
+/* Filter chips — pill with pop */
+.filter-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: all .22s cubic-bezier(.34,1.56,.64,1);
+  flex-shrink: 0;
+}
+.filter-chip:hover { border-color: rgba(184, 145, 46, 0.4); color: var(--ink); }
+.filter-chip.active {
+  background: linear-gradient(180deg, #1E7F76 0%, #0E4F4A 100%);
+  border-color: #0E4F4A;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(14,79,74,0.32), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* Form fields — refined */
+input[type=text], input[type=date], input[type=time], input[type=number], input[type=password], textarea, select {
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 252, 245, 0.55);
+  transition: border-color .2s ease, box-shadow .22s ease, background .2s ease;
+}
+input[type=text]:focus, input[type=date]:focus, input[type=time]:focus, input[type=number]:focus, input[type=password]:focus, textarea:focus, select:focus {
+  border-color: var(--brand);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px rgba(14, 79, 74, 0.10), 0 4px 12px rgba(14,79,74,0.06);
+}
+html[data-theme="dark"] input[type=text], html[data-theme="dark"] input[type=date],
+html[data-theme="dark"] input[type=time], html[data-theme="dark"] input[type=number],
+html[data-theme="dark"] input[type=password], html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  background: rgba(255,255,255,0.03);
+}
+label.field-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+html[data-theme="dark"] label.field-label { color: #E9CE7B; }
+
+/* Toggle buttons — bolder */
+.toggle-btn {
+  border-radius: 11px;
+  font-weight: 800;
+  min-width: 56px;
+}
+.toggle-btn.ok-active {
+  background: linear-gradient(180deg, #26A46F 0%, #1F8A5A 100%);
+  border-color: #1F8A5A;
+  box-shadow: 0 6px 16px rgba(31, 138, 90, 0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.toggle-btn.notok-active {
+  background: linear-gradient(180deg, #D65B5B 0%, #B93636 100%);
+  border-color: #B93636;
+  box-shadow: 0 6px 16px rgba(185, 54, 54, 0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+/* Chip button */
+.chip-btn {
+  border-radius: 12px;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1px rgba(14, 79, 74, 0.05);
+}
+.chip-btn.ok-active {
+  background: linear-gradient(180deg, #26A46F 0%, #1F8A5A 100%);
+  box-shadow: 0 6px 16px rgba(31, 138, 90, 0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.chip-btn.notok-active {
+  background: linear-gradient(180deg, #D65B5B 0%, #B93636 100%);
+  box-shadow: 0 6px 16px rgba(185, 54, 54, 0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+/* Modal — premium glass sheet */
+.modal { background: rgba(6, 20, 19, 0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.modal-content {
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbf7ee 100%);
+  border: 1px solid rgba(184, 145, 46, 0.14);
+  box-shadow:
+    0 40px 80px rgba(6, 20, 19, 0.35),
+    0 0 0 1px rgba(184,145,46,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  padding: 22px;
+}
+html[data-theme="dark"] .modal-content {
+  background: linear-gradient(180deg, #142322 0%, #0d1817 100%);
+  border-color: rgba(94, 234, 212, 0.14);
+  box-shadow:
+    0 40px 80px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(94,234,212,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+/* Toast — refined */
+#toast {
+  bottom: 100px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #143432 0%, #0A1F1E 100%);
+  color: #F1EFE8;
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid rgba(184, 145, 46, 0.28);
+  box-shadow:
+    0 20px 40px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* Skeleton — softer */
+.skeleton, .skeleton-line {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+  background-size: 1200px 100%;
+}
+
+/* Section header — refined */
+.section-header {
+  background: linear-gradient(180deg, rgba(255,255,255,0.5), var(--surface-2));
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 13px 15px;
+}
+html[data-theme="dark"] .section-header {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), var(--surface-2));
+}
+.section-title { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
+
+/* Floor card refinement */
+.floor-badge {
+  background: linear-gradient(135deg, var(--brand-tint), rgba(255,255,255,0.4));
+  color: var(--brand);
+  border: 1px solid rgba(14, 79, 74, 0.10);
+  border-radius: 9px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
+  width: 28px; height: 28px;
+}
+html[data-theme="dark"] .floor-badge {
+  background: rgba(94, 234, 212, 0.14);
+  border-color: rgba(94, 234, 212, 0.2);
+  color: #5eead4;
+}
+
+/* Photo thumb & add button */
+.photo-thumb {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.photo-add-btn {
+  border-radius: 12px;
+  border: 1.5px dashed rgba(184, 145, 46, 0.35);
+  background: linear-gradient(180deg, rgba(255,252,245,0.7), rgba(184,145,46,0.04));
+  color: var(--gold);
+  font-weight: 700;
+}
+.photo-add-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: linear-gradient(180deg, rgba(184,145,46,0.06), rgba(184,145,46,0.10));
+}
+
+/* Selection color */
+::selection { background: rgba(14, 79, 74, 0.24); color: var(--ink); }
+
+/* SOS tile — refined danger surface */
+.home-sos-tile, .stack > .tile[onclick*="sos"] {
+  background:
+    radial-gradient(400px 260px at 12% 20%, rgba(185,28,28,0.10), transparent 60%),
+    linear-gradient(135deg, #FFF6F5 0%, #FFFFFF 55%, #FFECEC 100%);
+  border-color: rgba(185, 28, 28, 0.24);
+  box-shadow: 0 18px 40px rgba(185, 28, 28, 0.14), var(--shadow-sm);
+}
+.home-sos-tile .tile-icon, .stack > .tile[onclick*="sos"] .tile-icon {
+  background: linear-gradient(135deg, #E86868 0%, #B91C1C 100%);
+  color: #fff;
+  border: 1px solid rgba(185, 28, 28, 0.4);
+  box-shadow: 0 8px 22px rgba(185, 28, 28, 0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+/* Empty state — quieter */
+.empty-title { font-size: 17px; font-weight: 700; }
+.empty-text { font-size: 13px; line-height: 1.5; }
+
+/* Hero role switch — refined pill (used on home) */
+.hero-role-switch {
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(184, 145, 46, 0.28);
+  backdrop-filter: blur(8px);
+  padding: 5px;
+}
+.hrs-btn.active {
+  background: linear-gradient(180deg, #ffffff, #FBF3DC);
+  color: #063834;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+/* Gold divider utility */
+.hr {
+  background: linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent);
+  margin: 16px 0;
+}
+
+/* Score bubble refinement */
+.record-score-bubble {
+  background: linear-gradient(135deg, var(--brand-tint), rgba(255,255,255,0.6));
+  color: var(--brand);
+  border: 1px solid rgba(14, 79, 74, 0.10);
+  box-shadow: 0 6px 16px rgba(14, 79, 74, 0.18), inset 0 0 0 4px rgba(255,255,255,0.5);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* Banner refinement */
+.banner {
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  border: 1px solid;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.banner.info {
+  background: linear-gradient(135deg, var(--brand-tint), rgba(255,255,255,0.6));
+  border-color: rgba(14, 79, 74, 0.18);
+  color: var(--brand-dark);
+}
+.banner.warn {
+  background: linear-gradient(135deg, var(--warn-tint), rgba(255,255,255,0.6));
+  border-color: rgba(180, 83, 15, 0.28);
+}
+.banner.danger {
+  background: linear-gradient(135deg, var(--danger-tint), rgba(255,255,255,0.6));
+  border-color: rgba(185, 28, 28, 0.24);
+}
+
+/* Sidenav — refined dark elegance */
+.sidenav {
+  background:
+    radial-gradient(400px 300px at 100% 0%, rgba(184,145,46,0.14), transparent 60%),
+    linear-gradient(180deg, #052824 0%, #0E4F4A 60%, #063834 100%);
+  border-right: 1px solid rgba(184, 145, 46, 0.14);
+}
+.sidenav-btn { border-radius: 12px; }
+.sidenav-btn.active {
+  background: linear-gradient(135deg, rgba(184, 145, 46, 0.22), rgba(255,255,255,0.06));
+  color: #fff;
+  border: 1px solid rgba(184, 145, 46, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.sidenav-brand-text small { color: rgba(233, 206, 123, 0.7); }
+
+/* Loading dots animation for premium feel */
+@keyframes premGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* AI assist card refinement */
+.ai-assist-card {
+  background:
+    linear-gradient(180deg, var(--brand-tint), rgba(255,255,255,0.4));
+  border: 1px solid rgba(14, 79, 74, 0.16);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.6);
+  border-radius: var(--radius);
+}
+.ai-assist-title { color: var(--brand); }
+html[data-theme="dark"] .ai-assist-card {
+  background: linear-gradient(180deg, rgba(94, 234, 212, 0.08), rgba(255,255,255,0.02));
+  border-color: rgba(94, 234, 212, 0.18);
+}
+
+/* Refined tap highlight on all buttons */
+button, [role="button"], .tile, .card, .record-card, .defect-card {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Home hero card enhancements (if pattern present in DOM) */
+.hero-card {
+  background:
+    radial-gradient(500px 320px at 100% 0%, rgba(184,145,46,0.16), transparent 60%),
+    linear-gradient(160deg, #063834 0%, #0E4F4A 55%, #052824 100%) !important;
+  border: 1px solid rgba(184, 145, 46, 0.25) !important;
+  color: #fff !important;
+  box-shadow:
+    0 22px 44px rgba(14, 79, 74, 0.28),
+    inset 0 1px 0 rgba(255,255,255,0.08) !important;
+}
+.hero-card .pagetitle, .hero-card h1, .hero-card h2 { color: #fff; }
+
+/* Number tabular consistency */
+.stat-num, .record-date, .defect-meta, .heat-count { font-variant-numeric: tabular-nums; }
+
+/* Chevrons and small carets */
+.chev { color: var(--gold); opacity: 0.6; }
+
+/* Focus outline for accessibility (keyboard only) */
+:focus-visible {
+  outline: 2px solid rgba(184, 145, 46, 0.6);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Print refinement */
+@media print {
+  body { background: #fff !important; }
+}
+
+/* Small phones */
+@media (max-width: 380px) {
+  .tile { padding: 14px; gap: 12px; }
+  .tile-icon { width: 42px; height: 42px; }
+  .stat-num { font-size: 26px; }
+  #app { padding: 16px 14px 24px; }
+}
+
 </style>
 </head>
 <body>
@@ -2366,7 +3118,7 @@ function repairText(text){
 }
 const STR = {
   en: {
-    nav_home:'Home', nav_new:'New', nav_records:'Records', nav_defects:'Defects', nav_settings:'Settings', nav_dashboard:'Dashboard', nav_residents:'Residents',
+    nav_home:'Home', nav_new:'New', nav_records:'Records', nav_defects:'Defects', nav_settings:'Settings', nav_dashboard:'Dashboard', nav_residents:'Residents', nav_mydefects:'My Defects',
     ip_title:"What's the problem here?", ip_describe:'Describe the issue', ip_placeholder:"What's wrong? e.g. Tube light not working near lift", ip_priority:'Priority', ip_assign:'Assign supervisor', ip_assign_later:'— Assign later —', ip_tags:'Tags', ip_skip:'Skip for now', ip_save:'Save issue',
     lbl_photos:'Photos', btn_take_photo:'Take / add photo', btn_add_more_photo:'Add more',
     res_title:'Resident Complaints', res_sub:'Raise a complaint, track it, and rate the resolution', res_total:'Total complaints', res_open:'Open', res_avg:'Avg rating', btn_raise_complaint:'Raise a Complaint', res_search_ph:'Search by flat, name or location…',
@@ -2403,7 +3155,7 @@ const STR = {
     ven_title:'Vendors', sos_title:'Emergency SOS', sos_raise:'Raise SOS alert', sos_raise_sub:'Get help from security & admin instantly'
   },
   hi: {
-    nav_home:'होम', nav_new:'नया', nav_records:'रिकॉर्ड', nav_defects:'समस्याएँ', nav_settings:'सेटिंग्स', nav_dashboard:'डैशबोर्ड', nav_residents:'निवासी',
+    nav_home:'होम', nav_new:'नया', nav_records:'रिकॉर्ड', nav_defects:'समस्याएँ', nav_settings:'सेटिंग्स', nav_dashboard:'डैशबोर्ड', nav_residents:'निवासी', nav_mydefects:'मेरे काम',
     ip_title:'यहाँ क्या समस्या है?', ip_describe:'समस्या बताएँ', ip_placeholder:'क्या खराबी है? जैसे — लिफ्ट के पास ट्यूबलाइट नहीं जल रही', ip_priority:'प्राथमिकता', ip_assign:'सुपरवाइज़र चुनें', ip_assign_later:'— बाद में तय करें —', ip_tags:'टैग', ip_skip:'अभी छोड़ें', ip_save:'समस्या सहेजें',
     lbl_photos:'फ़ोटो', btn_take_photo:'फ़ोटो लें / जोड़ें', btn_add_more_photo:'और जोड़ें',
     res_title:'निवासी शिकायतें', res_sub:'शिकायत दर्ज करें, स्थिति देखें और समाधान को रेट करें', res_total:'कुल शिकायतें', res_open:'खुली', res_avg:'औसत रेटिंग', btn_raise_complaint:'शिकायत दर्ज करें', res_search_ph:'फ्लैट, नाम या जगह से खोजें…',
@@ -2628,6 +3380,18 @@ function mobileToAuthEmail(mobile){
   return String(mobile||'').trim() + '@mhm-app.local'; // internal-only identifier, never shown, never sent anywhere
 }
 
+// Firebase persists real sign-ins on its own (IndexedDB, survives app
+// restarts) — but right after the SDK loads, currentUser can briefly read
+// back null even when a valid session is about to be restored, because
+// that restoration itself is asynchronous. onAuthStateChanged's first
+// callback is Firebase's own signal that it has finished checking, so
+// waiting for that is what makes "stay signed in" actually reliable.
+function waitForAuthState(){
+  return new Promise((resolve)=>{
+    const unsub = firebase.auth().onAuthStateChanged(user=>{ unsub(); resolve(user); });
+  });
+}
+
 // Public resident-complaint link (?resident=1): a lightweight anonymous
 // session so Firestore rules have *something* to check, but rules only
 // grant this identity permission to CREATE a new complaint — never read,
@@ -2737,6 +3501,16 @@ function friendlyAuthError(e){
   return (e && e.message) ? e.message : 'Something went wrong — please try again';
 }
 
+// Ground staff (worker) and vendor reps both get the same narrow
+// "only my assigned defects" experience — mirrors isNarrowStaff() in
+// firestore.rules exactly, so client-side routing and server-side
+// permissions never disagree about who counts as "narrow".
+function isNarrowRole(role){
+  return role==='worker' || role==='vendor';
+}
+function roleLabel(role){
+  return {admin:'Admin', supervisor:'Supervisor', worker:'Ground Staff', vendor:'Vendor'}[role] || role;
+}
 async function onStaffAuthenticated(user, staffData){
   AUTH_USER = user;
   STAFF_DOC = staffData;
@@ -2746,15 +3520,37 @@ async function onStaffAuthenticated(user, staffData){
   state._authScreen = null;
   state._authError = null;
   state._authForm = {name:'', mobile:'', password:'', password2:''};
-  state.view = 'home';
+  state.view = isNarrowRole(staffData.role) ? 'mydefects' : 'home';
   state._isNavigating = true;
   showAppNow();
   try{
-    await loadAll();
-    await loadAutoAssignRules();
-    await loadStaffList();
+    if(isNarrowRole(staffData.role)){
+      await loadMyAssignedDefects(user.uid);
+    } else {
+      await loadAll();
+      await loadAutoAssignRules();
+      await loadStaffList();
+    }
   }catch(e){}
   render();
+}
+// Workers can't read the broad mhm_records collection (Firestore rules
+// only let them read defects specifically assigned to them), so instead
+// of loadAll() this queries the small /assignments mirror for their uid,
+// then fetches just those individual defect records.
+async function loadMyAssignedDefects(uid){
+  const db = await initFirebase();
+  if(!db){ DB.defects = []; return; }
+  try{
+    const snap = await fbWithTimeout(db.collection('assignments').where('assignedToUid','==',uid).get());
+    const keys = snap.docs.map(d=>d.id); // same ids as mhm_records, e.g. "defect:abc123"
+    const results = await Promise.allSettled(keys.map(k=>storeGet(k)));
+    DB.defects = results.filter(r=>r.status==='fulfilled' && r.value).map(r=>r.value);
+    DB.defects.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  }catch(e){
+    console.error('could not load assigned defects', e);
+    DB.defects = [];
+  }
 }
 async function loadStaffList(){
   const db = await initFirebase();
@@ -3070,6 +3866,9 @@ async function storeSet(key, value){
       console.error('Firebase set failed — saved locally, queued for sync', e);
       if(localOk) enqueueSync(key, 'set');
     }
+  }
+  if(cloudOk && key.indexOf('defect:')===0){
+    syncDefectAssignment(key, value).catch(()=>{});
   }
   return localOk || cloudOk;
 }
@@ -3501,7 +4300,8 @@ function newStaffAccountModal(){
     + '<p style="font-size:12px; color:var(--ink-soft); margin:2px 0 10px;">They\'ll sign in with this mobile number + password. Share the password with them separately and ask them to keep it safe — this app doesn\'t have a self-service "forgot password" yet, so if they lose it you\'ll need to add them again.</p>'
     + '<div class="field"><label class="field-label">Name</label><input type="text" id="nsName" placeholder="e.g. Priya Verma"></div>'
     + '<div class="field"><label class="field-label">Mobile number</label><input type="tel" inputmode="numeric" maxlength="10" id="nsMobile" placeholder="10-digit mobile" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10)"></div>'
-    + '<div class="field"><label class="field-label">Role</label><select id="nsRole"><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>'
+    + '<div class="field"><label class="field-label">Role</label><select id="nsRole"><option value="supervisor">Supervisor</option><option value="admin">Admin</option><option value="worker">Ground Staff (Guard/Housekeeping)</option><option value="vendor">Vendor</option></select></div>'
+    + '<p style="font-size:11px; color:var(--ink-faint); margin:-6px 0 8px;">Ground Staff & Vendor accounts only ever see defects specifically assigned to them — not the full inspection data Supervisor/Admin can see.</p>'
     + '<div class="field"><label class="field-label">Temporary password</label><input type="text" id="nsPassword" placeholder="Min 6 characters"></div>'
     + (err ? '<p style="font-size:12px; color:var(--danger); margin:4px 0 0;">'+esc(err)+'</p>' : '')
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveNewStaffAccount()">Create account</button></div>'
@@ -3538,7 +4338,7 @@ function staffAccountsListHtml(){
     const isSelf = AUTH_USER && s.uid===AUTH_USER.uid;
     const isLastAdmin = s.role==='admin' && adminCount<=1;
     return '<div class="item-row" style="gap:8px;">'
-      + '<div style="flex:1; min-width:0;"><b style="font-size:13px;">'+esc(s.name)+'</b>'+(isSelf?' <span style="color:var(--ink-faint); font-weight:400; font-size:11.5px;">(you)</span>':'')+'<div style="font-size:11.5px; color:var(--ink-soft);">'+esc(s.mobile)+' · '+(s.role==='admin'?'Admin':'Supervisor')+'</div></div>'
+      + '<div style="flex:1; min-width:0;"><b style="font-size:13px;">'+esc(s.name)+'</b>'+(isSelf?' <span style="color:var(--ink-faint); font-weight:400; font-size:11.5px;">(you)</span>':'')+'<div style="font-size:11.5px; color:var(--ink-soft);">'+esc(s.mobile)+' · '+roleLabel(s.role)+'</div></div>'
       + '<button class="btn btn-sm btn-ghost" onclick="openEditStaffAccount(\''+s.uid+'\')">Edit</button>'
       + (isLastAdmin ? '' : '<button class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="confirmRemoveStaffAccount(\''+s.uid+'\')">Remove</button>')
       + '</div>';
@@ -3564,7 +4364,7 @@ function editStaffAccountModal(){
     + '<div class="field"><label class="field-label">Name</label><input type="text" id="esName" value="'+esc(d.name)+'" oninput="state._editStaffOpen.name=this.value"></div>'
     + '<div class="field"><label class="field-label">Mobile number (sign-in ID)</label><input type="text" value="'+esc(s.mobile)+'" disabled style="opacity:.6;"></div>'
     + '<p style="font-size:11px; color:var(--ink-faint); margin:-6px 0 8px;">Can\'t be changed here — remove and re-add with the new number instead.</p>'
-    + '<div class="field"><label class="field-label">Role</label><select id="esRole" onchange="state._editStaffOpen.role=this.value" '+(isLastAdmin?'disabled':'')+'><option value="supervisor" '+(d.role==='supervisor'?'selected':'')+'>Supervisor</option><option value="admin" '+(d.role==='admin'?'selected':'')+'>Admin</option></select></div>'
+    + '<div class="field"><label class="field-label">Role</label><select id="esRole" onchange="state._editStaffOpen.role=this.value" '+(isLastAdmin?'disabled':'')+'><option value="supervisor" '+(d.role==='supervisor'?'selected':'')+'>Supervisor</option><option value="admin" '+(d.role==='admin'?'selected':'')+'>Admin</option><option value="worker" '+(d.role==='worker'?'selected':'')+'>Ground Staff (Guard/Housekeeping)</option><option value="vendor" '+(d.role==='vendor'?'selected':'')+'>Vendor</option></select></div>'
     + (isLastAdmin ? '<p style="font-size:11px; color:var(--warn); margin-top:-6px;">This is the only Admin account — add another Admin before changing this one\'s role.</p>' : '')
     + (err ? '<p style="font-size:12px; color:var(--danger); margin:4px 0 0;">'+esc(err)+'</p>' : '')
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveEditStaffAccount()">Save</button></div>'
@@ -3805,19 +4605,28 @@ async function init(){
   state._authScreen = 'checking';
   const db = await initFirebase();
   let authed = false;
-  if(db && firebase.auth().currentUser){
-    const staffData = await loadStaffDoc(firebase.auth().currentUser.uid);
-    if(staffData){
-      AUTH_USER = firebase.auth().currentUser;
-      STAFF_DOC = staffData;
-      state.currentUser = {name: staffData.name, mobile: staffData.mobile, role: staffData.role};
-      state.role = staffData.role;
-      state.adminUnlocked = (staffData.role==='admin');
-      authed = true;
-    } else {
-      // Account exists in Firebase Auth but has no staff record (e.g. it
-      // was removed by an admin) — don't leave it half signed-in.
-      try{ await firebase.auth().signOut(); }catch(e){}
+  if(db){
+    // firebase.auth().currentUser can read back null for a brief moment
+    // even when a valid persisted session exists — restoring it from
+    // IndexedDB is asynchronous. onAuthStateChanged's first callback is
+    // Firebase's own signal that it has finished checking, so waiting for
+    // that (instead of reading currentUser immediately) is what makes
+    // "stay signed in" actually reliable across app restarts.
+    const restoredUser = await fbWithTimeout(waitForAuthState(), 8000).catch(()=>null);
+    if(restoredUser){
+      const staffData = await loadStaffDoc(restoredUser.uid);
+      if(staffData){
+        AUTH_USER = restoredUser;
+        STAFF_DOC = staffData;
+        state.currentUser = {name: staffData.name, mobile: staffData.mobile, role: staffData.role};
+        state.role = staffData.role;
+        state.adminUnlocked = (staffData.role==='admin');
+        authed = true;
+      } else {
+        // Account exists in Firebase Auth but has no staff record (e.g. it
+        // was removed by an admin) — don't leave it half signed-in.
+        try{ await firebase.auth().signOut(); }catch(e){}
+      }
     }
   }
 
@@ -3831,6 +4640,18 @@ async function init(){
   }
   state._authScreen = null;
 
+  if(isNarrowRole(state.role)){
+    state.view = 'mydefects';
+    await loadMyAssignedDefects(AUTH_USER.uid);
+    state._isNavigating = true;
+    showAppNow();
+    bindKeyboardAvoidance();
+    startBackgroundSync();
+    clearTimeout(watchdog);
+    forceShowApp();
+    return;
+  }
+
   await loadAll();
   state.resumeDraft = await storeGetPersonal('draftautosave');
   try{
@@ -3839,6 +4660,7 @@ async function init(){
   }catch(e){ SYNC_QUEUE = []; }
   await loadAutoAssignRules();
   await loadClaudeApiKey();
+  await loadStaffList();
   if(SYNC_QUEUE.length) flushSyncQueue();
   window.addEventListener('online', ()=>{ flushSyncQueue().then(n=>{ if(n && !state.residentMode) refreshData(false); }); });
   loadExternalLibs();
@@ -4041,7 +4863,11 @@ async function refreshData(showFeedback){
       sids: DB.sos.map(x=>x.id+x.status).sort().join(',')
     });
     const before = snap();
-    await loadAll();
+    if(isNarrowRole(state.role)){
+      if(AUTH_USER) await loadMyAssignedDefects(AUTH_USER.uid);
+    } else {
+      await loadAll();
+    }
     const changed = snap() !== before;
 
     if(state.view==='fill' || state.view==='review'){
@@ -4051,7 +4877,7 @@ async function refreshData(showFeedback){
     } else if(changed || showFeedback){
       // _isNavigating stays false → no animation flash
       render();
-      await checkForTaskPopup();
+      if(state.role!=='worker') await checkForTaskPopup();
     } else {
       // Nothing changed — just refresh the bell count silently
       updateNotifBell();
@@ -4140,7 +4966,9 @@ function render(){
     app.innerHTML = repairText(loginGateHtml());
     const sn = document.getElementById('sidenav'); if(sn) sn.innerHTML = '';
     const bn = document.getElementById('bottomnav'); if(bn) bn.innerHTML = '';
-    const ml = document.getElementById('modalLayer'); if(ml) ml.innerHTML = '';
+    renderModalLayer(); // e.g. the install prompt fires from its own browser
+                         // events independent of this render cycle — don't
+                         // blindly wipe it out from under it
     return;
   }
 
@@ -4160,7 +4988,8 @@ function render(){
     case 'vendors': html = viewVendors(); break;
     case 'sos': html = viewSos(); break;
     case 'settings': html = viewSettings(); break;
-    default: html = viewHome();
+    case 'mydefects': html = viewMyDefects(); break;
+    default: html = isNarrowRole(state.role) ? viewMyDefects() : viewHome();
   }
   app.innerHTML = repairText(html);
   // Animate ONLY on user navigation — never on background data refresh
@@ -4248,6 +5077,12 @@ const NAV_ITEMS = {
     {v:'records', icon:'clipboard', labelKey:'nav_records'},
     {v:'defects', icon:'alertTriangle', labelKey:'nav_defects'},
     {v:'settings', icon:'settings', labelKey:'nav_settings'}
+  ],
+  worker: [
+    {v:'mydefects', icon:'alertTriangle', labelKey:'nav_mydefects'}
+  ],
+  vendor: [
+    {v:'mydefects', icon:'alertTriangle', labelKey:'nav_mydefects'}
   ]
 };
 function renderBottomNav(){
@@ -4917,6 +5752,47 @@ function assignableMembers(){
 function memberMobile(name){
   const m = DB.members.find(x=> x.name===name && x.mobile);
   return m ? m.mobile : '';
+}
+// Real Staff/Vendor accounts a defect can be assigned to — separate from
+// assignableMembers() above, which is just the old name/mobile label
+// roster and isn't tied to a real sign-in account.
+function assignableWorkers(){
+  return (DB.staff||[]).filter(s=>isNarrowRole(s.role));
+}
+function resolveWorkerUidByName(name){
+  if(!name) return null;
+  const w = (DB.staff||[]).find(s=>isNarrowRole(s.role) && s.name===name);
+  return w ? w.uid : null;
+}
+// Suggestions (not a hard restriction — assignedTo stays free text so any
+// legacy/unlisted value still displays correctly) for "Assigned To"
+// fields: the old member roster plus real worker accounts. Only a name
+// picked from here (or that happens to match exactly) resolves to a real
+// account and grants that worker visibility on the defect via
+// syncDefectAssignment() below.
+function assignSuggestOptionsHtml(){
+  const names = new Set();
+  assignableMembers().forEach(m=>names.add(m.name));
+  assignableWorkers().forEach(w=>names.add(w.name));
+  return [...names].map(n=>'<option value="'+esc(n)+'">').join('');
+}
+// Keeps /assignments/{defectId} in sync with a defect's assignedTo name —
+// this is the whole reason a worker's Firestore rules can enforce "only
+// defects assigned to you" without being able to peek inside the defect's
+// own (opaque, JSON-string) record to check that field directly. Runs
+// automatically from storeSet() for every defect save, so no individual
+// assignment UI needs to remember to call this itself.
+async function syncDefectAssignment(key, defect){
+  const db = await initFirebase();
+  if(!db) return;
+  const uid = resolveWorkerUidByName(defect && defect.assignedTo);
+  try{
+    if(uid){
+      await fbWithTimeout(db.collection('assignments').doc(key).set({assignedToUid: uid, updatedAt: firebase.firestore.FieldValue.serverTimestamp()}));
+    } else {
+      await fbWithTimeout(db.collection('assignments').doc(key).delete());
+    }
+  }catch(e){ console.error('assignment sync failed', e); }
 }
 
 /* =========================================================
@@ -5700,7 +6576,7 @@ function defectCard(def){
   const statusLabelKey = {open:'status_open', 'in-progress':'status_inprogress', closed:'status_closed'};
   const priorityLabelKey = {high:'priority_high', medium:'priority_medium', low:'priority_low'};
   const overdueLabel = (def.status==='open'||def.status==='in-progress') && overdue ? 'OVERDUE '+age+'d' : null;
-  return '<div class="defect-card priority-'+def.priority+' '+(breach?'breach':'')+'" style="margin-bottom:8px;">'
+  return '<div class="defect-card priority-'+def.priority+' '+(breach?'breach':'')+'" style="margin-bottom:8px;cursor:pointer;" onclick="if(!event.target.closest(\'button,.photo-thumb,.ba-item,img\')) openDefectEdit(\''+def.id+'\')">'
     + '<div class="defect-top"><div><div class="defect-loc">'+esc(def.location)+'</div><div class="defect-meta">'+(def.source==='resident' ? (def.flat? 'Flat '+esc(def.flat)+' · ' : '')+'Resident Complaint' : 'Tower '+def.tower+' · '+defectFormLabel(def))+(def.assignedTo? ' · '+icon('users',10)+' '+esc(def.assignedTo) : '')+'</div></div>'
     + '<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;"><span class="pill '+def.priority+'">'+T(priorityLabelKey[def.priority])+'</span>'
     + (breach?'<span class="pill breach">critical breach</span>':(overdueLabel?'<span class="pill overdue" style="font-weight:900;letter-spacing:.03em;">'+overdueLabel+'</span>':''))
@@ -5872,6 +6748,19 @@ async function checkForTaskPopup(){
   }
 }
 
+function viewMyDefects(){
+  const mine = DB.defects.slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  const open = mine.filter(d=>d.status!=='closed');
+  const closed = mine.filter(d=>d.status==='closed');
+  return '<div class="pageheader"><div><div class="pagetitle">'+icon('alertTriangle',19)+' '+T('nav_mydefects')+'</div><div class="pagesub">'+(state.currentUser?esc(state.currentUser.name)+' ko assign hue kaam':'')+'</div></div>'
+    + '<button class="btn btn-sm btn-ghost" onclick="staffSignOut()">'+icon('logout',13)+' Sign out</button></div>'
+    + '<div class="stack">'
+    + (!mine.length
+        ? '<div class="empty card"><div class="empty-icon">'+icon('check',28)+'</div><div class="empty-title">Koi kaam assign nahi hai</div><div class="empty-sub">Jab koi defect aapko assign hoga, yahan dikhega.</div></div>'
+        : (open.length ? open.map(defectCard).join('') : '<p style="font-size:12.5px; color:var(--ok); font-weight:600;">'+icon('check',14)+' Sab kaam complete!</p>')
+          + (closed.length ? '<div style="margin-top:16px;"><span class="section-label">'+icon('check',13)+' Completed ('+closed.length+')</span>'+closed.slice(0,10).map(defectCard).join('')+'</div>' : ''))
+    + '</div>';
+}
 function viewDefects(){
   const f = state.defFilter;
   let list = DB.defects.slice();
@@ -6074,7 +6963,8 @@ function defectEditModal(id){
   if(!def) return '';
   return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
     + '<span class="section-label">Edit Defect</span>'
-    + '<div class="field"><label class="field-label">Assigned To</label><input type="text" id="edAssign" value="'+esc(def.assignedTo)+'"></div>'
+    + '<div class="field"><label class="field-label">Assigned To</label><input type="text" id="edAssign" list="assignSuggest" value="'+esc(def.assignedTo)+'"></div>'
+    + '<datalist id="assignSuggest">'+assignSuggestOptionsHtml()+'</datalist>'
     + '<div class="field"><label class="field-label">Target Completion Date</label><input type="date" id="edTarget" value="'+(def.targetDate||'')+'"></div>'
     + '<div class="field"><label class="field-label">Priority</label><select id="edPriority">'+['high','medium','low'].map(p=>'<option value="'+p+'" '+(def.priority===p?'selected':'')+'>'+p+'</option>').join('')+'</select></div>'
     + '<div class="field"><label class="field-label">Tags</label><div class="tag-row">'+TAG_OPTIONS.map(tag=>'<button type="button" class="tag-chip '+((def.tags||[]).includes(tag)?'active':'')+'" onclick="toggleEditTag(\''+id+'\',\''+tag.replace(/'/g,"\\\\'")+'\')">'+tag+'</button>').join('')+'</div></div>'
@@ -6089,7 +6979,8 @@ function newDefectModal(){
     + '<div class="field"><label class="field-label">Observation</label><textarea id="ndObs" placeholder="Describe the issue"></textarea></div>'
     + '<p style="font-size:11px;color:var(--ink-faint);margin:-4px 0 10px;">'+icon('spark',11)+' Priority & tags are set automatically from your description.</p>'
     + '<div class="field"><label class="field-label">Tower</label><select id="ndTower">'+TOWERS.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'
-    + '<div class="field"><label class="field-label">Assigned To</label><input type="text" id="ndAssign" placeholder="Optional"></div>'
+    + '<div class="field"><label class="field-label">Assigned To</label><input type="text" id="ndAssign" list="assignSuggest" placeholder="Optional"></div>'
+    + '<datalist id="assignSuggest">'+assignSuggestOptionsHtml()+'</datalist>'
     + '<div class="field"><label class="field-label">Photo</label><div class="photo-row">'+(state._newDefectPhoto? '<img class="photo-thumb" src="'+state._newDefectPhoto+'"><button type="button" class="btn btn-sm btn-ghost" onclick="state._newDefectPhoto=null; render();">Remove</button>' : '<label class="photo-add-btn">'+icon('camera',15)+' Add photo (optional)<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="attachNewDefectPhoto(this)"></label>')+'</div></div>'
     + '<div class="field"><label class="field-label">Video / Audio (optional)</label><div style="display:flex;flex-wrap:wrap;">'
         + videoAudioChipsHtml(state._newDefectMedia, 'removeNewDefectMedia')
@@ -6980,7 +7871,7 @@ function residentComplaintCard(c){
 }
 function residentFormCard(){
   const d = state._residentDraft || {};
-  const sup = assignableMembers();
+  const sup = assignableMembers().concat(assignableWorkers());
   return '<div class="card">'
     + '<span class="section-label">'+icon('plus',14)+' '+T('btn_raise_complaint')+'</span>'
     + '<div class="two-col"><div class="field"><label class="field-label">'+T('rc_name')+'</label><input type="text" id="rcName" placeholder="e.g. Rohit Sharma" value="'+esc(d.rcName||'')+'" oninput="state._residentDraft.rcName=this.value"></div>'
@@ -7117,7 +8008,7 @@ function viewSettings(){
         ).join('')
     + '</div>'
     + '<div class="card"><span class="section-label">'+icon('lock',13)+' Admin Access</span>'
-    + '<div class="settings-row"><div class="settings-row-text"><b>Signed in as</b><span>'+esc(state.currentUser?state.currentUser.name:'—')+' · '+esc(state.currentUser?state.currentUser.mobile:'')+' · '+(state.role==='admin'?'Admin':'Supervisor')+'</span></div><button class="btn btn-sm btn-ghost" onclick="staffSignOut()">Sign out</button></div>'
+    + '<div class="settings-row"><div class="settings-row-text"><b>Signed in as</b><span>'+esc(state.currentUser?state.currentUser.name:'—')+' · '+esc(state.currentUser?state.currentUser.mobile:'')+' · '+roleLabel(state.role)+'</span></div><button class="btn btn-sm btn-ghost" onclick="staffSignOut()">Sign out</button></div>'
     + '<p class="chart-fallback-note">This is a real, server-verified sign-in — Firestore itself checks your account before allowing any read or write, not just this screen. Only people an Admin has added under Staff Accounts below can sign in at all.</p>'
     + '</div>'
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('users',13)+' Staff Accounts (sign-in)</span>'
@@ -7142,7 +8033,7 @@ function viewSettings(){
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('clipboard',13)+' Audit Log</span>' + auditLogHtml() + '</div>' : '')
     + '<div class="card"><span class="section-label">Data</span>'
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="exportBackup()">'+icon('download',15)+' Export backup (JSON)</button></div>'
-    + (state.role==='admin' ? '<div class="btn-row" style="margin-top:8px;"><button class="btn btn-danger" onclick="confirmClearData()">'+icon('trash',15)+' Clear all data</button></div>' : '')
+    + (state.role==='admin' && state.currentUser && state.currentUser.mobile==='9587370773' ? '<div class="btn-row" style="margin-top:8px;"><button class="btn btn-danger" onclick="confirmClearData()">'+icon('trash',15)+' Clear all data</button></div>' : '')
     + '</div>'
     + '<div class="card"><span class="section-label">'+icon('info',13)+' About & Limitations</span>'
     + (FIREBASE_ENABLED

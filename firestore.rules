@@ -15,8 +15,28 @@ service cloud.firestore {
     function isAdmin() {
       return isStaff() && staffDoc().data.role == 'admin';
     }
+    // Ground staff (guard/housekeeping) OR an external vendor rep — either
+    // way, a narrow role that can only ever see the specific defects
+    // assigned to them, nothing else in the collection.
+    function isNarrowStaff() {
+      return isStaff() && (staffDoc().data.role == 'worker' || staffDoc().data.role == 'vendor');
+    }
+    // Admin or Supervisor — the two "broad access" roles, unchanged from
+    // before the narrow roles existed.
+    function isBroadStaff() {
+      return isStaff() && !isNarrowStaff();
+    }
     function bootstrapOpen() {
       return !exists(/databases/$(database)/documents/app_meta/bootstrap);
+    }
+    // A defect a worker has been assigned keeps a lightweight companion
+    // doc in /assignments/{sameDocId} (the main defect record is one
+    // opaque JSON string, so rules can't check assignedTo inside it
+    // directly — this mirror is what makes that check possible).
+    function isAssignedToMe(docId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/assignments/$(docId))
+        && get(/databases/$(database)/documents/assignments/$(docId)).data.assignedToUid == request.auth.uid;
     }
 
     // ---- one-time setup lock ----
@@ -46,6 +66,16 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ---- defect → worker assignment mirror ----
+    // Kept in sync automatically by the app whenever a defect is saved.
+    // Low-sensitivity (just defectId -> uid), so any signed-in staff
+    // account can read the whole thing; only Admin/Supervisor can write
+    // it (workers don't assign defects, they only resolve their own).
+    match /assignments/{docId} {
+      allow read: if isStaff();
+      allow write: if isBroadStaff();
+    }
+
     // ---- all operational app data (inspections, defects, resident
     // complaints, tasks, vendors, audit log, members roster, settings) ----
     // Everything the app stores lives in this one collection as
@@ -53,11 +83,14 @@ service cloud.firestore {
     // individual fields inside that JSON — only where a write can land,
     // its overall size, and whether it's a brand-new document.
     match /mhm_records/{docId} {
-      // Any signed-in staff account (Admin or Supervisor) — full access.
-      // This app doesn't currently split Firestore-level permissions
-      // between the two roles; Admin vs Supervisor is enforced as a UI
-      // feature-gate on top of this (team management, audit log, etc).
-      allow read, update, delete: if isStaff();
+      // Admin / Supervisor — full access, same as before the worker role.
+      allow read, update, delete: if isBroadStaff();
+
+      // Ground staff / vendor — only a defect they're specifically
+      // assigned to, and only to update it (e.g. mark resolved), never
+      // delete or read anything else in this collection.
+      allow read: if isNarrowStaff() && docId.matches('defect:.*') && isAssignedToMe(docId);
+      allow update: if isNarrowStaff() && docId.matches('defect:.*') && isAssignedToMe(docId);
 
       // Public resident-complaint link (?resident=1): create-only, and
       // only brand-new "defect:*" documents — matches exactly what that
@@ -70,3 +103,4 @@ service cloud.firestore {
     }
   }
 }
+
