@@ -173,6 +173,7 @@ a { color: inherit; }
 #splash .splash-sub { color: rgba(255, 255, 255, 0.75); font-size: 12px; font-family: var(--font-mono); letter-spacing: .14em; text-transform: uppercase; }
 #splash .splash-bar { width: 140px; height: 3px; background: rgba(255, 255, 255, 0.2); border-radius: 99px; overflow: hidden; margin-top: 6px; }
 #splash .splash-bar-fill { height: 100%; width: 40%; background: #fff; border-radius: 99px; animation: splashLoad 1.1s ease-in-out infinite; }
+#splash .splash-powered { color: rgba(255, 255, 255, 0.45); font-size: 9.5px; letter-spacing: .06em; margin-top: -10px; }
 
 @keyframes splashPulse {
   0%, 100% { transform: scale(1); }
@@ -1506,6 +1507,14 @@ body.has-actionbar{padding-bottom:150px;}
   .bottomnav,.topbar,.sidenav,.no-print,#splash,.sos-alert-banner{display:none !important;}
   body{padding:0; background:#fff;}
   #app{max-width:100%; padding:0; margin:0;}
+  /* #printArea is a sibling of the Report Builder's own cards (Branded
+     PDF, Monthly Summary, Excel, CSV) inside the same .stack — without
+     this, printing shows that whole screen's headings/date-pickers/
+     buttons mixed in with the actual report instead of a clean report.
+     printConsolidated() and the Monthly Summary print-fallback toggle
+     body.printing-report on right before window.print(). */
+  body.printing-report .pageheader{display:none !important;}
+  body.printing-report .stack > *:not(#printArea){display:none !important;}
 }
 
 
@@ -2599,6 +2608,7 @@ button, [role="button"], .tile, .card, .record-card, .defect-card {
   <img src="icon-192.png" id="splashLogo" alt="Max Heights Majestic">
   <div class="splash-title">Max Heights Majestic</div>
   <div class="splash-sub">Inspection System</div>
+  <div class="splash-powered">Powered by RWA</div>
   <div class="splash-bar"><div class="splash-bar-fill"></div></div>
 </div>
 
@@ -2696,7 +2706,8 @@ const ICONS = {
   siren: '<path d="M7 17v-4.5a5 5 0 0110 0V17"/><rect x="5" y="17" width="14" height="3.5" rx="1"/><line x1="12" y1="2.5" x2="12" y2="4.6"/><line x1="4.5" y1="5.5" x2="6" y2="7"/><line x1="19.5" y1="5.5" x2="18" y2="7"/>',
   logout: '<path d="M14.5 4H7a2 2 0 00-2 2v12a2 2 0 002 2h7.5"/><polyline points="16 8 20 12 16 16"/><line x1="9.5" y1="12" x2="20" y2="12"/>',
   calendar: '<rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="7" y1="17" x2="9" y2="17"/><line x1="11" y1="13" x2="17" y2="13"/><line x1="11" y1="17" x2="14" y2="17"/>',
-  'device-mobile-down': '<rect x="5" y="2" width="14" height="20" rx="3"/><line x1="9" y1="6" x2="15" y2="6"/><path d="M9.5 14l2.5 2.5 2.5-2.5"/><line x1="12" y1="11" x2="12" y2="16.5"/>'
+  'device-mobile-down': '<rect x="5" y="2" width="14" height="20" rx="3"/><line x1="9" y1="6" x2="15" y2="6"/><path d="M9.5 14l2.5 2.5 2.5-2.5"/><line x1="12" y1="11" x2="12" y2="16.5"/>',
+  cloudUpload: '<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>'
 };
 function icon(name, size, strokeWidth){
   size = size || 20; strokeWidth = strokeWidth || 2;
@@ -3251,7 +3262,8 @@ let state = {
   _sosMedia: [],   // [{type,dataUrl,name}] — photos/videos/audio attached to SOS
   _sosDetail: null,               // id of SOS whose detail popup is open
   _sosKind: 'general',             // selected emergency type inside the raise-SOS sheet
-  _resolveAfterPhoto: null           // after-photo held during defect resolution modal
+  _resolveAfterPhoto: null,          // after-photo held during defect resolution modal
+  _driveBackupBusy: false            // true while a Google Drive backup upload is in flight
 };
 let DB = { inspections: [], defects: [], audit: [], tasks: [], members: [], vendors: [], sos: [], staff: [] };
 let sigCtx = null, sigDrawing = false, sigHasStroke = false;
@@ -3361,6 +3373,178 @@ function initFirebase(){
     }
   })();
   return fbInitPromise;
+}
+
+/* =========================================================
+   GOOGLE DRIVE BACKUP — takes the exact same backup this app
+   already builds for "Export backup (JSON)" (see buildBackupPayload
+   near exportBackup, further down) and uploads it straight to one
+   specific Google Drive account, so a copy exists off this device
+   without anyone needing to remember to download + re-upload a file
+   by hand. Nothing happens until GOOGLE_DRIVE_CLIENT_ID below has a
+   real value — the button just explains what to do instead.
+
+   HOW TO TURN THIS ON:
+     1. https://console.cloud.google.com → top-left project picker →
+        pick the SAME project as FIREBASE_CONFIG above (Firebase
+        projects are Google Cloud projects — for this app that's
+        "max-inspection", already there once you open the link signed
+        in as whoever created the Firebase project).
+     2. APIs & Services → Library → search "Google Drive API" →
+        Enable.
+     3. APIs & Services → OAuth consent screen → External → fill in
+        an app name (e.g. "MHM Inspection") and the two required
+        email fields with your own email → Save. Leave Publishing
+        status as "Testing" — no Google review needed for that.
+     4. Same screen → Audience (called "Test users" on some Cloud
+        Console versions) → Add users → add mhmrwa2026@gmail.com AND
+        the personal Google account of every admin who will click the
+        backup button. While in Testing mode, ONLY emails added here
+        are allowed to sign in at all — everyone else gets blocked by
+        Google before ever reaching this app.
+     5. APIs & Services → Credentials → Create Credentials → OAuth
+        client ID → Application type: Web application → Authorized
+        JavaScript origins → add the exact URL this file is hosted at
+        (e.g. https://yourdomain.com — no trailing slash; add
+        http://localhost:PORT too if you test locally) → Create.
+     6. Copy the Client ID (ends in .apps.googleusercontent.com) and
+        paste it as GOOGLE_DRIVE_CLIENT_ID below.
+     7. Reload this file. Settings → Data → "Backup to Google Drive"
+        will now open a real Google sign-in popup instead of showing
+        the "not set up" message.
+
+   Every click opens Google's own account-chooser popup fresh — it
+   never silently reuses a cached session — so whoever's backing up
+   explicitly picks an account, and the result is checked against
+   GOOGLE_DRIVE_TARGET_EMAIL before anything gets uploaded, so a
+   backup can never silently land in the wrong person's Drive. It
+   always overwrites the SAME file (its id is remembered in
+   settings:driveBackupFileId, synced the same way as
+   settings:autoAssign / settings:reportCounter further down) instead
+   of piling up a new file per backup, so there's one current backup
+   on Drive at all times.
+
+   Scope used is drive.file — the narrowest Drive permission Google
+   offers: this app can only ever see/touch the one file and one
+   folder it creates for its own backups, never anything else already
+   sitting in that Google account's Drive.
+========================================================= */
+const GOOGLE_DRIVE_CLIENT_ID = '781289299619-rrfj9uibho592ufpmv8vcelmef33bv6t.apps.googleusercontent.com';
+const GOOGLE_DRIVE_TARGET_EMAIL = 'mhmrwa2026@gmail.com';
+const GOOGLE_DRIVE_ENABLED = !!GOOGLE_DRIVE_CLIENT_ID;
+const GOOGLE_DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
+const GOOGLE_DRIVE_FOLDER_NAME = 'MHM Inspection Backups';
+const GOOGLE_DRIVE_FILE_NAME = 'max-heights-backup.json';
+let gdriveTokenClient = null;
+let gsiLoadPromise = null;
+function loadGsi(){
+  if(!gsiLoadPromise) gsiLoadPromise = loadScript('https://accounts.google.com/gsi/client');
+  return gsiLoadPromise;
+}
+// Opens Google's account-chooser popup and resolves with an access
+// token. Never reuses a cached session silently — deliberate, since
+// the whole point is making sure the RIGHT Drive account gets picked
+// each time, not just whichever Google account happens to already be
+// signed in on this phone/browser.
+function gdriveRequestToken(){
+  return new Promise((resolve, reject)=>{
+    if(!window.google || !google.accounts || !google.accounts.oauth2){
+      reject(new Error('Google sign-in script did not load — check your internet connection'));
+      return;
+    }
+    const timer = setTimeout(()=>reject(new Error('Google sign-in timed out — please try again')), 90000);
+    if(!gdriveTokenClient){
+      gdriveTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_DRIVE_CLIENT_ID,
+        scope: GOOGLE_DRIVE_SCOPES,
+        callback: ()=>{}
+      });
+    }
+    gdriveTokenClient.callback = (resp)=>{
+      clearTimeout(timer);
+      if(!resp || resp.error){ reject(new Error((resp&&resp.error_description)||(resp&&resp.error)||'Google sign-in was cancelled')); return; }
+      resolve(resp.access_token);
+    };
+    try{ gdriveTokenClient.requestAccessToken({prompt:'select_account'}); }
+    catch(e){ clearTimeout(timer); reject(e); }
+  });
+}
+async function gdriveSignedInEmail(accessToken){
+  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {headers:{Authorization:'Bearer '+accessToken}});
+  if(!res.ok) throw new Error('Could not verify the signed-in Google account');
+  const data = await res.json();
+  return data.email || null;
+}
+async function gdriveApi(accessToken, url, opts){
+  opts = opts || {};
+  const headers = Object.assign({Authorization:'Bearer '+accessToken}, opts.headers||{});
+  const res = await fetch(url, Object.assign({}, opts, {headers}));
+  if(!res.ok){
+    let msg = 'Drive API error '+res.status;
+    try{ const j = await res.json(); if(j&&j.error&&j.error.message) msg = j.error.message; }catch(e){}
+    const err = new Error(msg); err.status = res.status; throw err;
+  }
+  return res.json();
+}
+// Folder id is cached in settings:driveBackupFolderId so re-runs never
+// need to search Drive again. drive.file scope only ever lets this app
+// see files/folders IT created, so the very first search naturally
+// finds nothing and a fresh folder gets created.
+async function gdriveGetOrCreateFolder(accessToken){
+  const cached = await storeGet('settings:driveBackupFolderId');
+  if(cached && cached.id) return cached.id;
+  const q = encodeURIComponent("mimeType='application/vnd.google-apps.folder' and name='"+GOOGLE_DRIVE_FOLDER_NAME+"' and trashed=false");
+  const found = await gdriveApi(accessToken, 'https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)&spaces=drive');
+  let folderId = found && found.files && found.files[0] ? found.files[0].id : null;
+  if(!folderId){
+    const created = await gdriveApi(accessToken, 'https://www.googleapis.com/drive/v3/files', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name:GOOGLE_DRIVE_FOLDER_NAME, mimeType:'application/vnd.google-apps.folder'})
+    });
+    folderId = created.id;
+  }
+  await storeSet('settings:driveBackupFolderId', {id:folderId});
+  return folderId;
+}
+// Resumable upload (not the simpler "multipart" method) so large
+// backups — this app embeds compressed defect photos, so a mature
+// deployment's JSON can run well past a few MB — upload reliably.
+// Overwrites the SAME file every time (id cached in
+// settings:driveBackupFileId) instead of piling up a new file per
+// backup, and transparently re-creates it if that file was ever
+// deleted on the Drive side (a stale cached id would otherwise 404
+// forever).
+async function gdriveUploadBackup(accessToken, folderId, jsonString, isRetry){
+  const cached = await storeGet('settings:driveBackupFileId');
+  const fileId = (!isRetry && cached && cached.id) ? cached.id : null;
+  const metadata = fileId
+    ? {name: GOOGLE_DRIVE_FILE_NAME}
+    : {name: GOOGLE_DRIVE_FILE_NAME, mimeType:'application/json', parents:[folderId]};
+  const initUrl = (fileId
+      ? 'https://www.googleapis.com/upload/drive/v3/files/'+fileId
+      : 'https://www.googleapis.com/upload/drive/v3/files'
+    ) + '?uploadType=resumable';
+  const initRes = await fetch(initUrl, {
+    method: fileId ? 'PATCH' : 'POST',
+    headers:{
+      'Authorization':'Bearer '+accessToken,
+      'Content-Type':'application/json; charset=UTF-8',
+      'X-Upload-Content-Type':'application/json'
+    },
+    body: JSON.stringify(metadata)
+  });
+  if(!initRes.ok){
+    if(fileId && initRes.status===404 && !isRetry) return gdriveUploadBackup(accessToken, folderId, jsonString, true);
+    throw new Error('Could not start Drive upload (status '+initRes.status+')');
+  }
+  const sessionUrl = initRes.headers.get('Location');
+  if(!sessionUrl) throw new Error('Drive did not return an upload session');
+  const putRes = await fetch(sessionUrl, {method:'PUT', headers:{'Content-Type':'application/json'}, body: jsonString});
+  if(!putRes.ok) throw new Error('Drive upload failed (status '+putRes.status+')');
+  const data = await putRes.json();
+  await storeSet('settings:driveBackupFileId', {id:data.id});
+  return data;
 }
 
 /* =========================================================
@@ -7557,8 +7741,9 @@ async function generateMonthlySummaryPDF(){
       + '<p style="font-size:12px;">Avg resolution time: '+fmtH(avgH)+' · Resident complaints: '+resComplaints.length+' · Avg resident rating: '+(avgRating? avgRating.toFixed(1)+'/5 ('+ratedInMonth.length+' reviews)':'—')+'</p>'
       + (hotspots.length? '<h3>Hotspots</h3>'+hotspots.map(([l,c])=>'<p style="font-size:12px; margin:2px 0;">'+esc(l)+' — '+c+'×</p>').join('') : '')
       + (perfRows.length? '<h3>Supervisor Performance</h3>'+perfRows.map(s=>'<p style="font-size:12px; margin:2px 0;">'+esc(s.name)+' — fixed '+s.n+' · avg '+fmtH(s.avgH)+(s.avgR? ' · '+s.avgR.toFixed(1)+'/5':'')+'</p>').join('') : '');
+    document.body.classList.add('printing-report');
     area.style.display='block';
-    setTimeout(()=>{ window.print(); area.style.display='none'; }, 50);
+    setTimeout(()=>{ window.print(); area.style.display='none'; document.body.classList.remove('printing-report'); }, 50);
     return;
   }
   const btn = document.getElementById('msBtn');
@@ -7624,8 +7809,9 @@ function printConsolidated(){
     + DB.defects.filter(x=>x.status!=='closed').map(x=>'<p style="font-size:12px; margin:4px 0;">['+x.priority.toUpperCase()+'] '+(x.source==='resident'?'Resident complaint'+(x.flat?' (Flat '+esc(x.flat)+')':''):'Tower '+x.tower)+' — '+esc(x.location)+' — '+esc(x.observation)+' — '+x.status+(x.assignedTo?' — assigned to '+esc(x.assignedTo):'')+(isOverdue(x)?' — OVERDUE':'')+'</p>').join('')
     + '<hr><h3>Resolved Defects ('+DB.defects.filter(x=>x.status==='closed').length+')</h3>'
     + DB.defects.filter(x=>x.status==='closed').sort((a,b)=>(b.closedAt||'').localeCompare(a.closedAt||'')).map(x=>'<p style="font-size:12px; margin:4px 0;">Resolved '+fmtDateTime(x.closedAt)+resolutionDurationText(x)+' — '+(x.source==='resident'?'Resident complaint'+(x.flat?' (Flat '+esc(x.flat)+')':''):'Tower '+x.tower)+' — '+esc(x.location)+(x.resolutionNote?' — Fix: '+esc(x.resolutionNote):'')+(x.resolvedBy?' — By '+esc(x.resolvedBy):'')+(x.rating?' — Resident rating '+x.rating+'/5'+(x.review?' — “'+esc(x.review)+'”':''):'')+'</p>').join('');
+  document.body.classList.add('printing-report');
   area.style.display='block';
-  setTimeout(()=>{ window.print(); area.style.display='none'; }, 50);
+  setTimeout(()=>{ window.print(); area.style.display='none'; document.body.classList.remove('printing-report'); }, 50);
 }
 function exportDefectsCsv(){
   const rows = [['ID','Source','Tower','Flat','Form','Location','Observation','Priority','Status','Assigned To','Target Date','Created At','Resolved At','Resolved By','Resolution Note','Resident Rating','Resident Review','Overdue']];
@@ -8033,6 +8219,7 @@ function viewSettings(){
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('clipboard',13)+' Audit Log</span>' + auditLogHtml() + '</div>' : '')
     + '<div class="card"><span class="section-label">Data</span>'
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="exportBackup()">'+icon('download',15)+' Export backup (JSON)</button></div>'
+    + (state.role==='admin' ? googleDriveBackupSectionHtml() : '')
     + (state.role==='admin' && state.currentUser && state.currentUser.mobile==='9587370773' ? '<div class="btn-row" style="margin-top:8px;"><button class="btn btn-danger" onclick="confirmClearData()">'+icon('trash',15)+' Clear all data</button></div>' : '')
     + '</div>'
     + '<div class="card"><span class="section-label">'+icon('info',13)+' About & Limitations</span>'
@@ -8505,8 +8692,11 @@ async function advanceSos(id, to){
   showToast(to==='resolved' ? 'SOS resolved ✓' : 'SOS acknowledged');
 }
 
+function buildBackupPayload(){
+  return {exportedAt:new Date().toISOString(), inspections:DB.inspections, defects:DB.defects, audit:DB.audit, tasks:DB.tasks, members:DB.members, vendors:DB.vendors, sos:DB.sos};
+}
 async function exportBackup(){
-  const backup = {exportedAt:new Date().toISOString(), inspections:DB.inspections, defects:DB.defects, audit:DB.audit, tasks:DB.tasks, members:DB.members, vendors:DB.vendors, sos:DB.sos};
+  const backup = buildBackupPayload();
   const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download='max-heights-backup-'+todayStr()+'.json';
@@ -8514,6 +8704,47 @@ async function exportBackup(){
   await logAudit('backup_exported', 'Backup JSON downloaded');
   await loadAll();
   showToast('Backup downloaded');
+}
+async function backupToGoogleDrive(){
+  if(!GOOGLE_DRIVE_ENABLED){
+    showToast('Google Drive backup not set up yet — see GOOGLE_DRIVE_CLIENT_ID near FIREBASE_CONFIG in the source');
+    return;
+  }
+  if(state._driveBackupBusy) return;
+  state._driveBackupBusy = true; render();
+  try{
+    await loadGsi();
+    const accessToken = await gdriveRequestToken();
+    const email = await gdriveSignedInEmail(accessToken);
+    if(email && email.toLowerCase()!==GOOGLE_DRIVE_TARGET_EMAIL.toLowerCase()){
+      showToast('Signed in as '+email+' — please pick '+GOOGLE_DRIVE_TARGET_EMAIL+' in the Google popup instead');
+      return;
+    }
+    const json = JSON.stringify(buildBackupPayload(), null, 2);
+    const folderId = await gdriveGetOrCreateFolder(accessToken);
+    await gdriveUploadBackup(accessToken, folderId, json);
+    await logAudit('backup_exported', 'Backup uploaded to Google Drive ('+GOOGLE_DRIVE_TARGET_EMAIL+')');
+    await loadAll();
+    showToast('Backup saved to Google Drive ✓');
+  }catch(e){
+    console.error('Google Drive backup failed', e);
+    showToast('Drive backup failed — '+(e&&e.message?e.message:'please try again'));
+  }finally{
+    state._driveBackupBusy = false; render();
+  }
+}
+function googleDriveBackupSectionHtml(){
+  const last = DB.audit.find(a=>a.action==='backup_exported' && /Google Drive/.test(a.details||''));
+  const busy = state._driveBackupBusy;
+  const btnIcon = busy
+    ? '<span style="display:inline-flex; animation:spin360 .8s linear infinite;">'+icon('refresh',15)+'</span>'
+    : icon('cloudUpload',15);
+  return '<div class="btn-row" style="margin-top:8px;"><button class="btn btn-ghost" '+(busy?'disabled':'')+' onclick="backupToGoogleDrive()">'+btnIcon+' '+(busy?'Saving to Drive…':'Backup to Google Drive')+'</button></div>'
+    + '<p class="chart-fallback-note">'
+      + (GOOGLE_DRIVE_ENABLED
+          ? (last ? 'Last saved to Drive ('+esc(GOOGLE_DRIVE_TARGET_EMAIL)+'): '+fmtDateTime(last.at) : 'Not backed up to Google Drive yet — always saves to '+esc(GOOGLE_DRIVE_TARGET_EMAIL)+', overwriting the same file each time.')
+          : 'Needs one-time setup — see the GOOGLE_DRIVE_CLIENT_ID comment near FIREBASE_CONFIG in the source.')
+    + '</p>';
 }
 function confirmClearData(){
   askConfirm({
