@@ -6,6 +6,16 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
+    // Anonymous sessions exist for exactly one reason in this app: the
+    // public resident-complaint link (?resident=1), via ensureResidentAuth()
+    // in the client. isSignedIn() alone is true for them too, so anything
+    // sensitive that shouldn't be reachable by "anyone who opened that
+    // public link" needs this check as well — most importantly the
+    // bootstrap-admin path below, which otherwise anyone could hit before
+    // a real admin exists.
+    function isAnonymous() {
+      return isSignedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
     function staffDoc() {
       return get(/databases/$(database)/documents/staff/$(request.auth.uid));
     }
@@ -44,10 +54,12 @@ service cloud.firestore {
     // created. While it doesn't exist, exactly one person can bootstrap
     // themselves in as Admin (see /staff/{uid} below); the moment it's
     // written, that path closes for everyone, permanently — there is no
-    // rule that can ever delete or overwrite it.
+    // rule that can ever delete or overwrite it. !isAnonymous() keeps a
+    // resident-link anonymous session from writing (and permanently
+    // poisoning) this lock before a real admin ever gets the chance to.
     match /app_meta/bootstrap {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && bootstrapOpen() && request.resource.data.usedBy == request.auth.uid;
+      allow create: if isSignedIn() && !isAnonymous() && bootstrapOpen() && request.resource.data.usedBy == request.auth.uid;
       allow update, delete: if false;
     }
 
@@ -58,8 +70,11 @@ service cloud.firestore {
     match /staff/{uid} {
       allow read: if isStaff();
       allow create: if isSignedIn() && (
-        // first-ever account, while bootstrap is open, becomes Admin
-        (bootstrapOpen() && uid == request.auth.uid && request.resource.data.role == 'admin')
+        // first-ever account, while bootstrap is open, becomes Admin —
+        // !isAnonymous() is the important part: without it, the anonymous
+        // session behind the public resident-complaint link could claim
+        // this on a fresh deployment and self-promote to Admin.
+        (bootstrapOpen() && !isAnonymous() && uid == request.auth.uid && request.resource.data.role == 'admin')
         // after that, only an existing Admin can add more staff
         || isAdmin()
       );

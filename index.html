@@ -1417,8 +1417,6 @@ body.keyboard-open{padding-bottom:0;}
 }
 .pagesub{font-size:12px; color:var(--ink-soft); margin-top:1px;}
 /* signature pad */
-.sigpad-wrap{border:1.5px dashed var(--border); border-radius:12px; background:var(--surface); position:relative; touch-action:none; overscroll-behavior:contain;}
-canvas.sigpad{width:100%; height:120px; touch-action:none; display:block;}
 .sig-clear{position:absolute; top:6px; right:6px; font-size:11px; padding:4px 8px;}
 /* review summary */
 .review-stat{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border);}
@@ -3173,6 +3171,7 @@ const STR = {
     res_empty_title:'No complaints yet', res_empty_sub:'Residents can raise a complaint with a photo — it goes straight to the maintenance team.',
     toast_enter_name:'Please enter your name', toast_enter_flat:'Please enter your flat number (e.g. A-1203)', toast_enter_problem:'Please describe the problem or its location', toast_complaint_done:'Complaint submitted ✓ — the team has been notified',
     dup_title:'Similar complaint already open', dup_msg:'Do you still want to submit a new complaint?', dup_confirm:'Submit anyway',
+    rc_dup_title:'Looks like the same complaint', rc_dup_msg:'You submitted something similar for this flat recently. Submitting again will create a separate complaint.', rc_dup_confirm:'Submit anyway',
     gs_title:'Getting Started', gs_step1:'Add your team members', gs_step1_sub:'Supervisors ke naam + mobile — WhatsApp notifications ke liye zaroori', gs_step2:'File your first inspection', gs_step2_sub:'Daily Tower ya Security checklist se shuru karo', gs_step3:'Share the resident link', gs_step3_sub:'Society WhatsApp group mein daalo — residents complaints daal payenge', gs_open_settings:'Open Settings', gs_start:'Start', gs_copy_link:'Copy link',
     btn_ok:'OK', btn_issue:'ISSUE', btn_review_submit:'Review & Submit', btn_mark_all_ok:'Mark all OK', btn_copy_prev_floor:'Copy previous floor',
     btn_set_to_now:'Set to now', btn_save:'Save', btn_cancel:'Cancel', btn_advance:'Advance', btn_edit:'Edit', btn_clear:'Clear',
@@ -3182,7 +3181,7 @@ const STR = {
     field_week_no:'Week No.', field_month:'Month', field_verified_by:'Verified By (Facility Manager)', field_remarks:'Remarks',
     label_inspection_details:'Inspection Details', label_floorwise_checklist:'Floor-wise Checklist',
     label_additional_inspection:'Additional Inspection', label_inspection_sections:'Inspection Sections',
-    label_verification:'Verification', label_supervisor_signature:'Supervisor Signature',
+    label_verification:'Verification',
     fill_sub:'Fill in the checklist below', remarks_placeholder:'Notes for this floor…',
     status_open:'open', status_inprogress:'in progress', status_closed:'closed', status_all:'all', status_overdue:'overdue',
     priority_high:'high', priority_medium:'medium', priority_low:'low',
@@ -3210,6 +3209,7 @@ const STR = {
     res_empty_title:'अभी कोई शिकायत नहीं', res_empty_sub:'निवासी फ़ोटो के साथ शिकायत दर्ज कर सकते हैं — यह सीधे मेंटेनेंस टीम तक पहुँचती है।',
     toast_enter_name:'कृपया अपना नाम लिखें', toast_enter_flat:'कृपया फ्लैट नंबर लिखें (जैसे A-1203)', toast_enter_problem:'कृपया समस्या या उसकी जगह बताएँ', toast_complaint_done:'शिकायत दर्ज हो गई ✓ — टीम को सूचना भेज दी गई है',
     dup_title:'ऐसी शिकायत पहले से खुली है', dup_msg:'क्या फिर भी नई शिकायत दर्ज करनी है?', dup_confirm:'फिर भी भेजें',
+    rc_dup_title:'यह वही शिकायत लग रही है', rc_dup_msg:'आपने इस फ्लैट के लिए हाल ही में मिलती-जुलती शिकायत भेजी थी। दोबारा भेजने से एक अलग शिकायत बन जाएगी।', rc_dup_confirm:'फिर भी भेजें',
     gs_title:'शुरुआत करें', gs_step1:'टीम के सदस्य जोड़ें', gs_step1_sub:'सुपरवाइज़र के नाम + मोबाइल — WhatsApp सूचना के लिए ज़रूरी', gs_step2:'पहला निरीक्षण भरें', gs_step2_sub:'Daily Tower या Security checklist से शुरू करें', gs_step3:'निवासी लिंक साझा करें', gs_step3_sub:'सोसाइटी WhatsApp ग्रुप में डालो — निवासी शिकायत डाल पाएँगे', gs_open_settings:'सेटिंग्स खोलें', gs_start:'शुरू करें', gs_copy_link:'लिंक कॉपी करें',
     btn_ok:'ठीक है', btn_issue:'समस्या', btn_review_submit:'समीक्षा करें व जमा करें', btn_mark_all_ok:'सभी को ठीक करें', btn_copy_prev_floor:'पिछली मंज़िल से कॉपी करें',
     btn_set_to_now:'अभी का समय भरें', btn_save:'सेव करें', btn_cancel:'रद्द करें', btn_advance:'आगे बढ़ाएँ', btn_edit:'संपादित करें', btn_clear:'साफ करें',
@@ -3219,7 +3219,7 @@ const STR = {
     field_week_no:'सप्ताह संख्या', field_month:'महीना', field_verified_by:'सत्यापनकर्ता (फैसिलिटी मैनेजर)', field_remarks:'टिप्पणी',
     label_inspection_details:'निरीक्षण विवरण', label_floorwise_checklist:'मंज़िल-वार चेकलिस्ट',
     label_additional_inspection:'अतिरिक्त निरीक्षण', label_inspection_sections:'निरीक्षण खंड',
-    label_verification:'सत्यापन', label_supervisor_signature:'सुपरवाइज़र हस्ताक्षर',
+    label_verification:'सत्यापन',
     fill_sub:'नीचे चेकलिस्ट भरें', remarks_placeholder:'इस मंज़िल के लिए टिप्पणी…',
     status_open:'खुला', status_inprogress:'प्रगति में', status_closed:'बंद', status_all:'सभी', status_overdue:'बकाया',
     priority_high:'उच्च', priority_medium:'मध्यम', priority_low:'निम्न',
@@ -3309,7 +3309,6 @@ let state = {
   _driveBackupBusy: false            // true while a Google Drive backup upload is in flight
 };
 let DB = { inspections: [], defects: [], audit: [], tasks: [], members: [], vendors: [], sos: [], staff: [] };
-let sigCtx = null, sigDrawing = false, sigHasStroke = false;
 let LIBS = { chart:false, xlsx:false, jspdf:false, qrcode:false };
 
 /* =========================================================
@@ -3911,7 +3910,8 @@ async function fbGet(key){
   if(!db) throw new Error('Firebase unavailable');
   const doc = await fbWithTimeout(db.collection(FIREBASE_COLLECTION).doc(key).get());
   if(!doc.exists) throw new Error('key not found: '+key);
-  return {key, value: doc.data().value};
+  const data = doc.data();
+  return {key, value: data.value, updatedAtMillis: data.updatedAt && data.updatedAt.toMillis ? data.updatedAt.toMillis() : null};
 }
 async function fbDelete(key){
   const db = await initFirebase();
@@ -4053,6 +4053,11 @@ if(!window.storage){
    automatically when the device comes online, on the 45s background
    sync tick, and on manual refresh. */
 let SYNC_QUEUE = []; // [{key, op:'set'|'delete'}]
+// Last known server updatedAt (millis) per key, as of the last time this
+// device actually read or wrote it. Used only to detect the narrow case
+// a queued (offline) write is about to silently overwrite a change made
+// by someone else in the meantime — see flushSyncQueue().
+let RECORD_VERSIONS = {};
 let __syncFlushing = false;
 async function persistSyncQueue(){ try{ await storeSetPersonal('syncqueue', {items: SYNC_QUEUE}); }catch(e){} }
 function enqueueSync(key, op){
@@ -4065,6 +4070,7 @@ async function flushSyncQueue(){
   if(!FIREBASE_ENABLED || __syncFlushing || !SYNC_QUEUE.length) return 0;
   __syncFlushing = true;
   let flushed = 0;
+  let conflictCount = 0;
   try{
     const pending = SYNC_QUEUE.slice();
     for(const item of pending){
@@ -4074,13 +4080,39 @@ async function flushSyncQueue(){
         } else {
           const local = await window.storage.get(item.key, true);
           if(local && local.value !== undefined && local.value !== null){
+            // Conflict check: a queued write has, by definition, been
+            // waiting a while — long enough for someone else to have
+            // genuinely edited the same record in the meantime. This
+            // can't prevent that (there's no reliable "state before
+            // either edit" to safely merge from — the two touched
+            // record shapes have no guaranteed common ancestor cached
+            // anywhere), so resolution stays last-write-wins, same as
+            // before. What changes: instead of that overwrite happening
+            // completely silently, a genuine conflict gets logged and
+            // flagged, so an admin can notice and double-check rather
+            // than someone's edit just vanishing without a trace.
+            let conflicted = false;
+            const knownVersion = RECORD_VERSIONS[item.key];
+            if(knownVersion){
+              try{
+                const cloudNow = await fbGet(item.key);
+                if(cloudNow.updatedAtMillis && cloudNow.updatedAtMillis > knownVersion) conflicted = true;
+              }catch(e){ /* deleted or unreadable server-side — nothing to conflict with */ }
+            }
             await fbSet(item.key, local.value);
+            RECORD_VERSIONS[item.key] = Date.now();
+            if(conflicted){
+              conflictCount++;
+              let ref = item.key;
+              try{ const parsed = JSON.parse(local.value); ref = parsed.location || parsed.code || parsed.title || item.key; }catch(e){}
+              await logAudit('sync_conflict', ref+' — this device\'s offline change overwrote an edit made by someone else in the meantime. Please double-check this record.');
+            }
             // Mirrors storeSet()'s own post-write step — without this, a
             // defect created/edited OFFLINE and only synced later via this
             // queue would land in Firestore with no matching /assignments
             // doc, so the worker/vendor it's assigned to would never see it.
             if(item.key.indexOf('defect:')===0){
-              try{ syncDefectAssignment(item.key, JSON.parse(local.value)); }catch(e){}
+              try{ await syncDefectAssignment(item.key, JSON.parse(local.value)); }catch(e){}
             }
           }
         }
@@ -4090,7 +4122,7 @@ async function flushSyncQueue(){
     }
     if(flushed){
       await persistSyncQueue();
-      showToast(flushed+' pending record'+(flushed>1?'s':'')+' synced to cloud ✓');
+      showToast(flushed+' pending record'+(flushed>1?'s':'')+' synced to cloud'+(conflictCount? ' — '+conflictCount+' had a conflicting edit, check Audit Log' : ' ✓'));
       if(typeof updateNotifBell==='function') updateNotifBell();
     }
   }finally{ __syncFlushing = false; }
@@ -4107,7 +4139,7 @@ async function storeSetWithStatus(key, value){
   catch(e){ console.error('local storage set failed', e); }
   let cloudOk = false;
   if(FIREBASE_ENABLED){
-    try{ await fbSet(key, json); cloudOk = true; }
+    try{ await fbSet(key, json); cloudOk = true; RECORD_VERSIONS[key] = Date.now(); }
     catch(e){
       console.error('Firebase set failed — saved locally, queued for sync', e);
       if(localOk) enqueueSync(key, 'set');
@@ -4128,6 +4160,7 @@ async function storeGet(key){
       const r = await fbGet(key);
       if(r){
         try{ await window.storage.set(key, r.value, true); }catch(e){} // mirror locally for offline use
+        if(r.updatedAtMillis) RECORD_VERSIONS[key] = r.updatedAtMillis;
         return JSON.parse(r.value);
       }
       // Not in Firebase — might be a record created offline that hasn't
@@ -5508,7 +5541,6 @@ function newDraft(formType){
       : (DB.members.filter(m=>m.role==='supervisor').length===1 ? (DB.members.find(m=>m.role==='supervisor').mobile||'') : ''),
     verifiedBy:'',
     weekNo:'', month:new Date().toLocaleDateString('en-IN',{month:'long'}),
-    signature:null,
     defectMeta: {},
     _autoAdvance: true,   /* default ON — auto-move to next floor after all items checked */
     submittedAt:null, status:'draft'
@@ -5870,8 +5902,8 @@ function viewFill(){
       + '</div>' : ''
     )
     + '<div class="field"><label class="field-label">'+(d.formType==='weekly-mep'?T('field_mep_supervisor_name'):T('field_supervisor_name'))+'</label><input type="text" placeholder="Full name" value="'+esc(d.supervisorName)+'" oninput="d(\'supervisorName\',this.value)"></div>'
-    + '<div class="field"><label class="field-label">'+T('field_mobile')+'</label><input type="tel" inputmode="numeric" id="mobileInput" placeholder="10-digit mobile" value="'+esc(d.mobile)+'" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10); d(\'mobile\',this.value); render();">'
-      + (d.mobile && !/^\d{10}$/.test(d.mobile) ? '<p style="font-size:11px; color:var(--warn); margin-top:4px;">Needs to be exactly 10 digits to submit — currently '+d.mobile.length+'.</p>' : '')
+    + '<div class="field"><label class="field-label">'+T('field_mobile')+'</label><input type="tel" inputmode="numeric" id="mobileInput" placeholder="10-digit mobile" value="'+esc(d.mobile)+'" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10); d(\'mobile\',this.value); updateMobileValidationMsg(this.value);">'
+      + '<p id="mobileValidationMsg" style="font-size:11px; color:var(--warn); margin-top:4px; display:'+((d.mobile && !/^\d{10}$/.test(d.mobile)) ? 'block' : 'none')+';">Needs to be exactly 10 digits to submit — currently '+(d.mobile?d.mobile.length:0)+'.</p>'
     + '</div>'
     + '</div>'
     + body
@@ -5886,6 +5918,17 @@ function stickyActionBar(draft){
     + '<button class="btn btn-primary" onclick="goReview()">'+T('btn_review_submit')+' '+icon('chevronRight',16)+'</button></div>';
 }
 function d(field, val){ state.draft[field] = val; }
+// Updates just the mobile-field validation message directly, instead of
+// calling the full render() on every keystroke (which used to rebuild
+// this entire form's HTML — including all 14 floor cards on Daily Tower
+// — just to update one line of text). Same live feedback, no full re-render.
+function updateMobileValidationMsg(val){
+  const el = document.getElementById('mobileValidationMsg');
+  if(!el) return;
+  const invalid = val && !/^\d{10}$/.test(val);
+  el.style.display = invalid ? 'block' : 'none';
+  if(invalid) el.textContent = 'Needs to be exactly 10 digits to submit — currently '+val.length+'.';
+}
 function stampNow(mode){
   state.draft.date = todayStr();
   if(mode==='range') state.draft.timeFrom = nowTimeStr();
@@ -6162,7 +6205,9 @@ function assignableMembers(){
 }
 function memberMobile(name){
   const m = DB.members.find(x=> x.name===name && x.mobile);
-  return m ? m.mobile : '';
+  if(m) return m.mobile;
+  const s = (DB.staff||[]).find(x=> x.name===name && x.mobile);
+  return s ? s.mobile : '';
 }
 // Real Staff/Vendor accounts a defect can be assigned to — separate from
 // assignableMembers() above, which is just the old name/mobile label
@@ -6231,11 +6276,60 @@ const AI_RULES = [
   {re:/garbage|dust|dirty|stain|smell|odour|odor|pest|clean|litter/i, tags:['Cleanliness'], priority:'low', vendor:'housekeeping', action:'Assign housekeeping and recheck after cleaning.'},
   {re:/lift|motor|camera|cctv|gate|boom|rfid|dg|transformer|equipment/i, tags:['Equipment Damage'], priority:'medium', vendor:'AMC/vendor', action:'Log with the relevant AMC vendor and monitor until restored.'}
 ];
+// Each rule's keyword list is derived straight from its own regex source
+// (e.g. "fire|smoke|extinguisher") so there is exactly one place to edit
+// a rule's vocabulary — the regex above — and the fuzzy matcher below
+// always stays in sync with it.
+AI_RULES.forEach(r=>{ r.words = r.re.source.split('|'); });
+
+/* ---- lightweight fuzzy matching (typo-tolerant AI_RULES lookup) ----
+   Ground staff typing on a phone routinely mistype keywords ("garbge",
+   "dustt"). A strict regex like /garbage|dust/i would simply miss those
+   and the issue would fall through to a generic/low-priority bucket.
+   Instead of hand-rolling a fuzzy list per rule, we reuse each rule's
+   existing regex vocabulary (see r.words above) and additionally accept
+   any typed word that's "close enough" (small Levenshtein edit distance)
+   to one of those keywords. This is intentionally simple — no library,
+   no network call — in keeping with this assistant being fully offline. */
+function levenshtein(a, b){
+  const m = a.length, n = b.length;
+  if(!m) return n;
+  if(!n) return m;
+  let prev = new Array(n+1);
+  for(let j=0; j<=n; j++) prev[j] = j;
+  for(let i=1; i<=m; i++){
+    const cur = [i];
+    for(let j=1; j<=n; j++){
+      const cost = a[i-1]===b[j-1] ? 0 : 1;
+      cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost);
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+// Short keywords ("dust") tolerate 1 typo'd letter; longer ones ("extinguisher")
+// tolerate 2 — a fixed tolerance would be too strict on long words and too
+// loose on short ones (e.g. "gate" vs "late" is 1 typo but a different word).
+function fuzzyTolerance(len){ return len<=5 ? 1 : 2; }
+function tokenizeWords(text){ return (text||'').toLowerCase().split(/[^a-z]+/).filter(Boolean); }
+function ruleFuzzyHit(tokens, words){
+  for(const w of words){
+    if(!w || w.length<3) continue; // too short to fuzzy-match reliably
+    const tol = fuzzyTolerance(w.length);
+    for(const t of tokens){
+      if(Math.abs(t.length - w.length) > tol) continue; // cheap pre-filter
+      if(t[0] !== w[0]) continue; // typos almost never change the first letter (avoids e.g. "late" matching "gate")
+      if(t===w || levenshtein(t, w) <= tol) return true;
+    }
+  }
+  return false;
+}
 function aiUnique(arr){ return [...new Set((arr||[]).filter(Boolean))]; }
 function aiTextParts(ctx){ return [ctx.label, ctx.location, ctx.observation].filter(Boolean).join(' - '); }
 function aiAnalyzeIssue(ctx){
   const text = aiTextParts(ctx);
-  const hits = AI_RULES.filter(r=>r.re.test(text));
+  const tokens = tokenizeWords(text);
+  const hits = AI_RULES.filter(r=> r.re.test(text) || ruleFuzzyHit(tokens, r.words));
   let tags = aiUnique(hits.flatMap(h=>h.tags));
   if(ctx.existingTags && ctx.existingTags.length) tags = aiUnique(tags.concat(ctx.existingTags));
   if(!tags.length) tags = ['Other'];
@@ -6333,7 +6427,7 @@ function attachIssuePhoto(input){
   const file=input.files&&input.files[0];if(!file)return;
   if(state._issueDraft.photos.length>=3){showToast('Maximum 3 photos per issue');return;}
   issueSnapshotObs();
-  compressImage(file,480,0.6).then(async dataUrl=>{
+  compressImage(file,1080,0.75,watermarkLabelForCurrentContext()).then(async dataUrl=>{
     state._issueDraft.photos.push(dataUrl);render();
     const obs=(state._issueDraft.observation||'').trim();
     const apiKey=CLAUDE_API_KEY;
@@ -6436,13 +6530,9 @@ function issuePopupModal(){
 function signatureBlock(){
   return '<div class="card"><span class="section-label">'+T('label_verification')+'</span>'
     + '<div class="field"><label class="field-label">'+T('field_verified_by')+'</label><input type="text" placeholder="Name" value="'+esc(state.draft.verifiedBy)+'" oninput="d(\'verifiedBy\',this.value)"></div>'
-    + '<label class="field-label">'+T('label_supervisor_signature')+'</label>'
-    + '<div class="sigpad-wrap"><canvas id="sigpad" class="sigpad"></canvas><button class="btn btn-sm btn-ghost sig-clear" onclick="clearSig()">'+T('btn_clear')+'</button></div>'
     + '</div>';
 }
 function postRenderHooks(){
-  const canvas = document.getElementById('sigpad');
-  if(canvas){ setupSigPad(canvas); }
   animateStatNums();
   initResidentCountdown();
   scrollOpenFloorIntoView();
@@ -6511,42 +6601,6 @@ document.addEventListener('click', function(e){
   btn.appendChild(ripple);
   ripple.addEventListener('animationend', ()=> ripple.remove());
 });
-function setupSigPad(canvas){
-  const ratio = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width*ratio; canvas.height = rect.height*ratio;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(ratio,ratio);
-  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--ink') || '#1B241F';
-  ctx.lineWidth = 2; ctx.lineCap='round';
-  sigCtx = ctx; sigHasStroke=false;
-  if(window.__sigMouseUp){ window.removeEventListener('mouseup', window.__sigMouseUp); window.__sigMouseUp = null; }
-  if(state.draft && state.draft.signature){
-    const img = new Image();
-    img.onload = ()=> ctx.drawImage(img,0,0,rect.width,rect.height);
-    img.src = state.draft.signature;
-    sigHasStroke = true;
-  }
-  function pos(e){
-    const r = canvas.getBoundingClientRect();
-    const t = e.touches ? e.touches[0] : e;
-    return {x: t.clientX-r.left, y: t.clientY-r.top};
-  }
-  function start(e){ sigDrawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); }
-  function move(e){ if(!sigDrawing) return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); sigHasStroke=true; e.preventDefault(); }
-  function end(){ if(!sigDrawing) return; sigDrawing=false; if(state.draft) state.draft.signature = canvas.toDataURL('image/png'); }
-  canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
-  window.__sigMouseUp = end;
-  canvas.addEventListener('touchstart', start, {passive:false}); canvas.addEventListener('touchmove', move, {passive:false}); canvas.addEventListener('touchend', end);
-}
-function clearSig(){
-  const canvas = document.getElementById('sigpad');
-  const rect = canvas.getBoundingClientRect();
-  sigCtx.clearRect(0,0,rect.width,rect.height);
-  sigHasStroke=false;
-  if(state.draft) state.draft.signature = null;
-}
-
 /* =========================================================
    REVIEW VIEW
 ========================================================= */
@@ -6705,7 +6759,7 @@ function attachReviewPhoto(stableId, input){
   const found = gatherFlaggedDefects(state.draft).find(x=>x.stableId===stableId);
   const cur = found ? found.photos.slice() : [];
   if(cur.length >= 3){ showToast('Maximum 3 photos per issue'); return; }
-  compressImage(file, 480, 0.6).then(dataUrl=>{
+  compressImage(file, 1080, 0.75, watermarkLabelForCurrentContext()).then(dataUrl=>{
     cur.push(dataUrl);
     setDefectMeta(stableId, {photos: cur, photo: cur[0]});
     render();
@@ -6747,7 +6801,7 @@ function removeReviewMedia(stableId, idx){
   setDefectMeta(stableId, {media: cur});
   render();
 }
-function compressImage(file, maxWidth, quality){
+function compressImage(file, maxWidth, quality, watermarkLabel){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
     reader.onerror = reject;
@@ -6757,15 +6811,56 @@ function compressImage(file, maxWidth, quality){
       img.onload = ()=>{
         const scale = Math.min(1, maxWidth/img.width);
         const canvas = document.createElement('canvas');
-        canvas.width = img.width*scale; canvas.height = img.height*scale;
+        canvas.width = Math.round(img.width*scale); canvas.height = Math.round(img.height*scale);
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img,0,0,canvas.width,canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        if(watermarkLabel) drawPhotoWatermark(ctx, canvas.width, canvas.height, watermarkLabel);
+        // Prefer WebP — a representative test photo came out roughly 60%
+        // smaller than JPEG at the same resolution/quality, which is what
+        // lets us afford noticeably more resolution (better for reading
+        // fine detail like a hairline crack or wiring colours) at a
+        // similar or smaller file size than before. Per spec, a browser
+        // that can't encode to a requested type must silently substitute
+        // PNG instead of erroring — detect that (PNG here would be much
+        // BIGGER than JPEG, since it's lossless) and use JPEG instead.
+        let out = canvas.toDataURL('image/webp', quality);
+        if(!out.startsWith('data:image/webp')) out = canvas.toDataURL('image/jpeg', quality);
+        resolve(out);
       };
       img.src = reader.result;
     };
     reader.readAsDataURL(file);
   });
+}
+// Stamps a small, legible date/time + who-attached-it label directly into
+// a photo's own pixels (not EXIF — this app's canvas re-encoding strips
+// that anyway, and EXIF is trivial for anyone to edit regardless). Worth
+// being honest about what this is and isn't: it's a lightweight, visible
+// reference — useful when scanning through photos later — but it records
+// when the photo was ATTACHED here, not when it was actually taken, so on
+// its own it can't prove a photo is fresh rather than reused. The
+// capture="environment" hint already on every photo input in this app is
+// what steers toward the camera over the gallery in the first place;
+// this just adds a clear record once something's attached.
+function drawPhotoWatermark(ctx, w, h, label){
+  const text = label+' · '+new Date().toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  const fontSize = Math.max(14, Math.round(w/32));
+  ctx.font = fontSize+'px sans-serif';
+  const padX = fontSize*0.6, padY = fontSize*0.5;
+  const barHeight = fontSize + padY*2;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, h-barHeight, w, barHeight);
+  ctx.fillStyle = '#fff';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, padX, h-barHeight/2);
+}
+// Who to credit in the watermark for whatever's being attached right
+// now — the signed-in staff member for every normal flow, or the
+// resident's own entered name on the public complaint form (residents
+// have no signed-in identity at all).
+function watermarkLabelForCurrentContext(){
+  if(state.residentMode) return (state._residentDraft && state._residentDraft.rcName) || 'Resident';
+  return (state.currentUser && state.currentUser.name) || '';
 }
 
 async function submitInspection(){
@@ -7012,7 +7107,6 @@ function viewDetail(){
     + '</div>'
     + body
     + (relatedDefects.length? '<div class="card"><span class="section-label">Defects logged from this inspection</span>'+relatedDefects.map(defectCard).join('')+'</div>':'')
-    + (r.signature? '<div class="card"><span class="section-label">Signature</span><img src="'+r.signature+'" style="max-width:220px; border:1px solid var(--border); border-radius:10px;"></div>':'')
     + '<div class="btn-row no-print"><button class="btn btn-ghost" onclick="window.print()">'+icon('printer',16)+' Print</button></div>'
     + '</div>';
 }
@@ -7100,7 +7194,7 @@ async function saveResolution(id){
 function attachResolutionPhoto(id, input){
   const file = input.files && input.files[0];
   if(!file) return;
-  compressImage(file, 480, 0.6).then(dataUrl=>{
+  compressImage(file, 1080, 0.75, watermarkLabelForCurrentContext()).then(dataUrl=>{
     const def = DB.defects.find(x=>x.id===id);
     def.resolutionPhoto = dataUrl;
     render();
@@ -7139,7 +7233,7 @@ function openTaskComplete(id){ state._taskCompleteOpen = id; state._taskComplete
 function attachTaskCompletePhoto(input){
   const file = input.files && input.files[0];
   if(!file) return;
-  compressImage(file, 480, 0.6).then(dataUrl=>{
+  compressImage(file, 1080, 0.75, watermarkLabelForCurrentContext()).then(dataUrl=>{
     state._taskCompletePhoto = dataUrl;
     render();
   }).catch(()=> showToast('Could not read photo'));
@@ -7271,7 +7365,7 @@ function openNewDefect(){ state._newDefectOpen = true; state._newDefectPhoto = n
 function attachNewDefectPhoto(input){
   const file = input.files && input.files[0];
   if(!file) return;
-  compressImage(file, 480, 0.6).then(dataUrl=>{ state._newDefectPhoto = dataUrl; render(); }).catch(()=> showToast('Could not read photo'));
+  compressImage(file, 1080, 0.75, watermarkLabelForCurrentContext()).then(dataUrl=>{ state._newDefectPhoto = dataUrl; render(); }).catch(()=> showToast('Could not read photo'));
 }
 function attachNewDefectVideo(input){
   if(state._newDefectMedia.length>=3){ showToast('Maximum 3 video/audio files'); return; }
@@ -7319,9 +7413,10 @@ function toggleEditTag(id, tag){
 async function saveDefectEdit(id){
   const def = DB.defects.find(x=>x.id===id);
   const prev = {assignedTo:def.assignedTo, targetDate:def.targetDate, priority:def.priority};
-  def.assignedTo = document.getElementById('edAssign').value;
-  def.targetDate = document.getElementById('edTarget').value;
-  def.priority = document.getElementById('edPriority').value;
+  const assignEl = document.getElementById('edAssign'), targetEl = document.getElementById('edTarget'), priorityEl = document.getElementById('edPriority');
+  if(assignEl) def.assignedTo = assignEl.value;
+  if(targetEl) def.targetDate = targetEl.value;
+  if(priorityEl) def.priority = priorityEl.value;
   const pnEl = document.getElementById('edProgressNote');
   if(pnEl && pnEl.value.trim()) def.progressNote = pnEl.value.trim();
   const ok = await storeSet('defect:'+def.id, def);
@@ -7417,9 +7512,9 @@ function bindPinInputs(){
 function defectEditModal(id){
   const def = DB.defects.find(x=>x.id===id);
   if(!def) return '';
+  if(def.source==='resident') return residentComplaintDetailModal(id);
   return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
     + '<span class="section-label">Edit Defect</span>'
-    + (def.source==='resident' && def.code ? '<div style="font-size:11px; font-family:var(--font-mono); color:var(--ink-soft); margin:-6px 0 10px;">'+esc(def.code)+' · '+esc(def.location)+'</div>' : '')
     + '<div class="field"><label class="field-label">Assigned To</label><input type="text" id="edAssign" list="assignSuggest" value="'+esc(def.assignedTo)+'"></div>'
     + '<datalist id="assignSuggest">'+assignSuggestOptionsHtml()+'</datalist>'
     + '<div class="field"><label class="field-label">Target Completion Date</label><input type="date" id="edTarget" value="'+(def.targetDate||'')+'"></div>'
@@ -7427,6 +7522,42 @@ function defectEditModal(id){
     + '<div class="field"><label class="field-label">Tags</label><div class="tag-row">'+TAG_OPTIONS.map(tag=>'<button type="button" class="tag-chip '+((def.tags||[]).includes(tag)?'active':'')+'" onclick="toggleEditTag(\''+id+'\',\''+tag.replace(/'/g,"\\\\'")+'\')">'+tag+'</button>').join('')+'</div></div>'
     + '<div class="field"><label class="field-label">Progress update</label><textarea id="edProgressNote" placeholder="Status update / next steps — e.g. Plumber ko call kiya, kal aayega" style="min-height:56px;">'+esc(def.progressNote||'')+'</textarea></div>'
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveDefectEdit(\''+id+'\')">Save</button></div>'
+    + '</div></div>';
+}
+// Resident complaints keep the resident's own words (observation, flat,
+// photos) read-only here — staff can look at the full detail, assign it,
+// change its status, and set/update a target date + progress note, but
+// can't quietly rewrite what was actually reported. Inspection-raised
+// defects still go through the full editable form above.
+function residentComplaintDetailModal(id){
+  const def = DB.defects.find(x=>x.id===id);
+  if(!def) return '';
+  const statusLabelKey = {open:'status_open', 'in-progress':'status_inprogress', closed:'status_closed'};
+  const photos = (def.photos && def.photos.length) ? def.photos : (def.photo ? [def.photo] : []);
+  return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
+    + '<span class="section-label">'+icon('star',14)+' Resident Complaint</span>'
+    + (def.code ? '<div style="font-size:11px; font-family:var(--font-mono); color:var(--ink-soft); margin:-6px 0 10px;">'+esc(def.code)+' · '+fmtDateTime(def.createdAt)+'</div>' : '')
+
+    + '<div class="card" style="background:var(--surface-2); margin-bottom:14px;">'
+      + '<div style="font-size:13px; font-weight:800;">'+esc(def.residentName||'—')+'</div>'
+      + '<div style="font-size:12px; color:var(--ink-soft); margin-top:2px;">'+esc(def.location)+(def.mobile? ' · <a href="tel:'+esc(def.mobile)+'" style="color:inherit; text-decoration:underline;">'+esc(def.mobile)+' '+icon('phone',10)+'</a>' : '')+'</div>'
+      + '<div style="font-size:13.5px; margin-top:10px; line-height:1.5;">'+esc(def.observation)+'</div>'
+      + (photos.length ? '<div class="photo-row" style="flex-wrap:wrap; margin-top:10px;">'+photos.map(ph=>'<img class="photo-thumb" src="'+ph+'" onclick="openLightbox(\''+ph+'\')" style="cursor:pointer;">').join('')+'</div>' : '')
+      + mediaPlaybackHtml(def.media)
+    + '</div>'
+
+    + '<div class="settings-row" style="padding:0 0 12px;"><div class="settings-row-text"><b>Status</b><span>'+T(statusLabelKey[def.status])+(def.status==='closed' && def.closedAt ? ' · '+fmtDateTime(def.closedAt)+(def.resolvedBy? ' by '+esc(def.resolvedBy):'') : '')+'</span></div>'
+      + (def.status==='open' ? '<button class="btn btn-sm btn-primary" onclick="cycleDefectStatus(\''+id+'\')">Mark In Progress</button>' : '')
+      + (def.status==='in-progress' ? '<button class="btn btn-sm btn-primary" onclick="cycleDefectStatus(\''+id+'\')">Mark Resolved</button>' : '')
+    + '</div>'
+    + (def.status==='closed' && def.resolutionNote ? '<p style="font-size:12.5px; color:var(--ink-soft); margin:-6px 0 12px;">Fix: '+esc(def.resolutionNote)+'</p>' : '')
+
+    + '<div class="field"><label class="field-label">Assigned To</label><input type="text" id="edAssign" list="assignSuggest" value="'+esc(def.assignedTo)+'"></div>'
+    + '<datalist id="assignSuggest">'+assignSuggestOptionsHtml()+'</datalist>'
+    + (def.assignedTo && memberMobile(def.assignedTo) ? '<div class="btn-row" style="margin:-6px 0 12px;"><button class="btn btn-sm" style="background:#25D366;color:#fff;border:none;" onclick="notifyDefectWhatsApp(\''+id+'\')">'+icon('send',13)+' Notify '+esc(def.assignedTo)+' on WhatsApp</button></div>' : '')
+    + '<div class="field"><label class="field-label">Target Completion Date</label><input type="date" id="edTarget" value="'+(def.targetDate||'')+'"></div>'
+    + '<div class="field"><label class="field-label">Progress update</label><textarea id="edProgressNote" placeholder="Status update / next steps — e.g. Plumber ko call kiya, kal aayega" style="min-height:56px;">'+esc(def.progressNote||'')+'</textarea></div>'
+    + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Close</button><button class="btn btn-primary" onclick="saveDefectEdit(\''+id+'\')">Save</button></div>'
     + '</div></div>';
 }
 function newDefectModal(){
@@ -7480,7 +7611,7 @@ function resolutionModal(id){
 function attachAfterPhoto(input){
   const file = input.files && input.files[0];
   if(!file) return;
-  compressImage(file, 600, 0.75).then(dataUrl => {
+  compressImage(file, 1080, 0.75, watermarkLabelForCurrentContext()).then(dataUrl => {
     state._resolveAfterPhoto = dataUrl;
     renderModalLayer();
   }).catch(()=> showToast('Could not read photo'));
@@ -8188,7 +8319,7 @@ function attachResidentPhoto(input){
   const file = input.files && input.files[0]; if(!file) return;
   if(state._residentPhotos.length >= 3){ showToast('Maximum 3 photos'); return; }
   snapshotResidentForm();
-  compressImage(file, 480, 0.6).then(dataUrl=>{ state._residentPhotos.push(dataUrl); render(); }).catch(()=> showToast('Could not read photo'));
+  compressImage(file, 1080, 0.75, watermarkLabelForCurrentContext()).then(dataUrl=>{ state._residentPhotos.push(dataUrl); render(); }).catch(()=> showToast('Could not read photo'));
 }
 function removeResidentPhoto(i){ snapshotResidentForm(); state._residentPhotos.splice(i,1); render(); }
 function attachResidentVideo(input){
@@ -8203,6 +8334,32 @@ function attachResidentAudio(input){
 }
 function removeResidentMedia(i){ snapshotResidentForm(); state._residentMedia.splice(i,1); render(); }
 const handleResSearch = debounce(function(val){ state.resFilter.q = val; render(); }, 250);
+// Local-only record of THIS device's own recent resident-complaint
+// submissions — used solely to catch an accidental double-submit (a
+// slow-connection double-tap, or reloading and resubmitting because it
+// wasn't clear the first one went through). Never synced or read by
+// anyone else; kept small and pruned by age.
+async function checkResidentLocalDuplicate(flat, problemText){
+  try{
+    const saved = await storeGetPersonal('residentRecentComplaints');
+    const items = (saved && saved.value) || [];
+    const fiveDaysAgo = Date.now() - 5*24*3600*1000;
+    const textNew = (problemText||'').toLowerCase();
+    const flatNorm = (flat||'').trim().toLowerCase();
+    return items.find(x=> x.at > fiveDaysAgo && x.flat===flatNorm
+      && textNew.length>3 && (x.problemText||'').split(' ').some(w=> w.length>3 && textNew.includes(w))
+    ) || null;
+  }catch(e){ return null; } // never block a real submission over a failed local-storage read
+}
+async function rememberResidentComplaintLocally(flat, problemText){
+  try{
+    const saved = await storeGetPersonal('residentRecentComplaints');
+    const items = (saved && saved.value) || [];
+    items.push({flat:(flat||'').trim().toLowerCase(), problemText:(problemText||'').toLowerCase(), at: Date.now()});
+    while(items.length>8) items.shift();
+    await storeSetPersonal('residentRecentComplaints', {value: items});
+  }catch(e){}
+}
 async function saveResidentComplaint(){
   snapshotResidentForm();
   const d = state._residentDraft;
@@ -8211,6 +8368,23 @@ async function saveResidentComplaint(){
   if(!d.rcProblem || !d.rcProblem.trim()){ showToast(T('toast_enter_problem')); return; }
   if(!d.rcMobile || !/^[0-9]{10}$/.test(d.rcMobile.trim())){ showToast('Mobile number is required (10 digits)'); return; }
   if(state.residentMode){
+    // DB.defects is always empty for a resident session (Firestore only
+    // grants them create access, never read — see firestore.rules), so
+    // the cross-complaint check below literally has nothing to compare
+    // against here. The only duplicate this device CAN meaningfully
+    // detect is one it submitted itself, so check that instead: no new
+    // read permission needed, no other resident's data ever touched.
+    const recentDup = await checkResidentLocalDuplicate(d.rcFlat, d.rcProblem);
+    if(recentDup){
+      askConfirm({
+        title: T('rc_dup_title'),
+        message: T('rc_dup_msg'),
+        confirmLabel: T('rc_dup_confirm'),
+        danger: false,
+        onConfirm: ()=> doSaveResidentComplaint()
+      });
+      return;
+    }
     await doSaveResidentComplaint();
     return;
   }
@@ -8274,6 +8448,7 @@ async function doSaveResidentComplaint(){
       return;
     }
     DB.defects.unshift(defect);
+    await rememberResidentComplaintLocally(d.rcFlat, d.rcProblem);
     await logAudit('resident_complaint', defect.location+' — by '+defect.residentName+' (Flat '+defect.flat+')');
     let confirmed = status.cloudOk;
     for(let i=0; i<4 && !confirmed; i++){
@@ -8371,6 +8546,7 @@ function residentComplaintCard(c){
     + (c.status==='closed' && c.closedAt ? '<div class="defect-meta" style="margin-top:6px; color:var(--ok); font-weight:600;">'+icon('check',12)+' Resolved '+fmtDateTime(c.closedAt)+resolutionDurationText(c)+(c.resolvedBy? ' · by '+esc(c.resolvedBy):'')+'</div>'+(c.resolutionNote? '<div class="defect-meta" style="margin-top:2px;">Fix: '+esc(c.resolutionNote)+'</div>':'') : '')
     + (c.rating ? '<div class="defect-meta" style="margin-top:6px; color:var(--warn); font-weight:700; font-size:13px;">'+starsHtml(c.rating)+' '+c.rating+'/5'+(c.review? '<div style="font-weight:400; color:var(--ink-soft); margin-top:2px;">“'+esc(c.review)+'”</div>':'')+'</div>'
         : (c.status==='closed' ? residentRatingWidget(c) : ''))
+    + '<div class="btn-row" style="margin-top:8px;"><button class="btn btn-sm btn-ghost" onclick="openDefectEdit(\''+c.id+'\')">'+icon('users',13)+' Manage</button></div>'
     + '</div>';
 }
 function residentFormCard(){
@@ -8579,6 +8755,7 @@ function viewSettings(){
       + '</div>' : '')
     + '<div class="card"><span class="section-label">Data</span>'
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="exportBackup()">'+icon('download',15)+' Export backup (JSON)</button></div>'
+    + '<p class="chart-fallback-note">Backs up every inspection, defect, task and complaint\'s text, status, and assignment history. Photos/video/audio/signatures are left out to keep this fast and lightweight as data grows — they still live safely in Firestore itself, just not duplicated into this file.</p>'
     + (state.role==='admin' ? googleDriveBackupSectionHtml() : '')
     + (state.role==='admin' && state.currentUser && state.currentUser.mobile==='9587370773' ? '<div class="btn-row" style="margin-top:8px;"><button class="btn btn-danger" onclick="confirmClearData()">'+icon('trash',15)+' Clear all data</button></div>' : '')
     + '</div>'
@@ -8596,7 +8773,7 @@ function viewSettings(){
    rows. Purely cosmetic — doesn't change what's logged or its data. */
 function auditActionCategory(action){
   if(action==='data_cleared') return 'danger';
-  if(action==='defect_logged' || action==='defect_status' || action==='defect_edited' || action==='task_assigned' || action==='member_removed' || action==='staff_removed') return 'warn';
+  if(action==='defect_logged' || action==='defect_status' || action==='defect_edited' || action==='task_assigned' || action==='member_removed' || action==='staff_removed' || action==='sync_conflict') return 'warn';
   if(action==='inspection_submitted' || action==='defect_resolved' || action==='task_completed' || action==='member_added' || action==='staff_added') return 'ok';
   return 'info'; // report_generated, backup_exported, member_edited, staff_edited, etc.
 }
@@ -8942,7 +9119,7 @@ function attachSosMedia(input, type){
   if(type==='audio'||type==='video'){
     reader.readAsDataURL(file);
   } else {
-    compressImage(file, 800, 0.7).then(url=>{
+    compressImage(file, 1080, 0.75, watermarkLabelForCurrentContext()).then(url=>{
       if(!state._sosMedia) state._sosMedia=[];
       state._sosMedia.push({type:'photo', dataUrl:url, name:file.name, mime:'image/jpeg'});
       render();
@@ -9088,7 +9265,26 @@ async function advanceSos(id, to){
 }
 
 function buildBackupPayload(){
-  return {exportedAt:new Date().toISOString(), inspections:DB.inspections, defects:DB.defects, audit:DB.audit, tasks:DB.tasks, members:DB.members, vendors:DB.vendors, sos:DB.sos};
+  // Media (photos/video/audio/signatures) is almost certainly the
+  // dominant contributor to payload size as data accumulates over months
+  // — a base64 photo alone can be tens of KB, multiplied across every
+  // inspection/defect/task/SOS ever created. Stripping it keeps
+  // JSON.stringify() fast (it currently runs synchronously on the main
+  // thread) and the payload small enough to comfortably upload from a
+  // mobile browser, while fully preserving what actually matters for a
+  // backup: every record's text, status, assignment, and timestamps.
+  const stripMedia = (arr) => (arr||[]).map(rec => {
+    const clean = {...rec};
+    delete clean.photo; delete clean.photos; delete clean.resolutionPhoto;
+    delete clean.media; delete clean.signature; delete clean.donePhoto;
+    return clean;
+  });
+  return {
+    exportedAt: new Date().toISOString(),
+    note: 'Photos, video, audio and signatures are excluded to keep this backup fast and lightweight. All text, status, assignment, and timestamp data is complete.',
+    inspections: stripMedia(DB.inspections), defects: stripMedia(DB.defects), audit: DB.audit,
+    tasks: stripMedia(DB.tasks), members: DB.members, vendors: DB.vendors, sos: stripMedia(DB.sos)
+  };
 }
 async function exportBackup(){
   const backup = buildBackupPayload();

@@ -1,4 +1,4 @@
-const C='mhm-v23',R='mhm-r23';
+const C='mhm-v24',R='mhm-r24';
 const PRE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./icon-192-maskable.png','./icon-512-maskable.png','./apple-touch-icon-180.png','./apple-touch-icon-167.png','./apple-touch-icon-152.png','./apple-touch-icon-120.png','./back-button-handler.js'];
 const CDN=['cdnjs.cloudflare.com','fonts.googleapis.com','fonts.gstatic.com','www.gstatic.com'];
 const SKIP=['firestore.googleapis.com','firebase.googleapis.com','identitytoolkit.googleapis.com','securetoken.googleapis.com'];
@@ -13,7 +13,17 @@ self.addEventListener('fetch',e=>{
     return;
   }
   if(url.origin===self.location.origin){
-    e.respondWith(fetch(req).then(r=>{caches.open(C).then(c=>c.put(req,r.clone()));return r;}).catch(()=>caches.match(req).then(h=>h||caches.match('./index.html'))));
+    e.respondWith(fetch(req).then(r=>{caches.open(C).then(c=>c.put(req,r.clone()));return r;}).catch(()=>caches.match(req).then(h=>{
+      if(h) return h;
+      // Only an actual page load should ever fall back to the app shell.
+      // Any other resource type (script, image, etc.) that's neither
+      // fetchable nor cached should fail normally — returning index.html's
+      // HTML in its place would hit the browser as the wrong content type
+      // (e.g. a .js request parsed as JS would error on the literal "<" of
+      // "<!DOCTYPE...").
+      if(req.mode==='navigate' || req.destination==='document') return caches.match('./index.html');
+      return new Response('', {status:504, statusText:'Offline and not cached'});
+    })));
   }
 });
 self.addEventListener('message',e=>{

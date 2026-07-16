@@ -23,17 +23,15 @@
   var exiting = false; // true once the user has confirmed Exit
   var primed = false; // true once the first real render() has told us the actual starting view
 
-  // Flags that closeModals() (in index.html) resets — if any is truthy,
-  // a modal/sheet is currently covering the screen.
-  var MODAL_FLAGS = [
-    'showPinModal','_editOpen','_newDefectOpen','_resolveOpen','_newTaskOpen',
-    '_taskCompleteOpen','_userPickerRole','_newMemberOpen','_confirmOpen',
-    '_installOpen','_issuePopup','_newVendorOpen','_newSosOpen','_sosDetail','_waShare',
-    '_newStaffOpen','_editStaffOpen','_auditLogOpen','_changePasswordOpen'
-  ];
-  function isModalOpen(s){
-    for(var i=0;i<MODAL_FLAGS.length;i++){ if(s[MODAL_FLAGS[i]]) return true; }
-    return false;
+  // A modal is open exactly when index.html's renderModalLayer() has put
+  // something into #modalLayer — every branch there ends with
+  // `layer.innerHTML = someModal(); return;`, and the one fallback path
+  // (nothing open) clears it to ''. Checking the DOM directly like this
+  // means back correctly closes any modal that exists today AND any
+  // modal added later, with no separate list here to remember to update.
+  function isModalOpen(){
+    var layer = document.getElementById('modalLayer');
+    return !!(layer && layer.innerHTML && layer.innerHTML.trim());
   }
 
   // Push a fresh history entry so there's always one to "consume" on the
@@ -107,7 +105,7 @@
       arm();
       return;
     }
-    if(isModalOpen(s)){
+    if(isModalOpen()){
       try{ if(typeof window.closeModals==='function') window.closeModals(); }
       finally{ arm(); }
       return;
@@ -140,7 +138,6 @@
         } else if(s.view!==lastSeenView){
           if(viewStack[viewStack.length-1]!==s.view){
             viewStack.push(s.view);
-            if(viewStack.length>40) viewStack.splice(1,1); // keep root, trim oldest middle entry
           }
           lastSeenView = s.view;
           arm();
