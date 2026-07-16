@@ -29,7 +29,7 @@
     'showPinModal','_editOpen','_newDefectOpen','_resolveOpen','_newTaskOpen',
     '_taskCompleteOpen','_userPickerRole','_newMemberOpen','_confirmOpen',
     '_installOpen','_issuePopup','_newVendorOpen','_newSosOpen','_sosDetail','_waShare',
-    '_newStaffOpen','_editStaffOpen','_auditLogOpen'
+    '_newStaffOpen','_editStaffOpen','_auditLogOpen','_changePasswordOpen'
   ];
   function isModalOpen(s){
     for(var i=0;i<MODAL_FLAGS.length;i++){ if(s[MODAL_FLAGS[i]]) return true; }

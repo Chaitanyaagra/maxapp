@@ -2688,6 +2688,8 @@ const ICONS = {
   camera: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8.2 7l1.3-2.6h5l1.3 2.6"/><circle cx="12" cy="13.6" r="3.4"/>',
   qrcode: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14.5" y="14.5" width="2.5" height="2.5"/><rect x="18.5" y="14.5" width="2.5" height="2.5"/><rect x="14.5" y="18.5" width="2.5" height="2.5"/><rect x="18.5" y="18.5" width="2.5" height="2.5"/>',
   check: '<polyline points="4 12.5 9 17.5 20 5.5"/>',
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  eyeOff: '<path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a20.14 20.14 0 015.06-6.06M9.9 4.24A10.4 10.4 0 0112 4c7 0 11 8 11 8a20.18 20.18 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
   x: '<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
   chevronDown: '<polyline points="5 8.5 12 15.5 19 8.5"/>',
   chevronUp: '<polyline points="5 15.5 12 8.5 19 15.5"/>',
@@ -2728,6 +2730,24 @@ function icon(name, size, strokeWidth){
   size = size || 20; strokeWidth = strokeWidth || 2;
   const body = ICONS[name] || '';
   return '<svg class="icon" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+strokeWidth+'" stroke-linecap="round" stroke-linejoin="round">'+body+'</svg>';
+}
+// A plain type="password" input hides what's typed but can't be reasoned
+// about once typed, unlike a visible field an admin can double check
+// before saving — this pairs the masking with a standard show/hide eye
+// toggle so both are available. Used for the Add Staff Account temporary
+// password field and every field in the Change Password modal.
+function passwordFieldHtml(id, placeholder, autocomplete, oninput){
+  return '<div style="position:relative;">'
+    + '<input type="password" id="'+id+'" placeholder="'+esc(placeholder||'')+'" '+(autocomplete?'autocomplete="'+autocomplete+'"':'')+(oninput?' oninput="'+esc(oninput)+'"':'')+' style="padding-right:40px; width:100%; box-sizing:border-box;">'
+    + '<button type="button" onclick="togglePasswordVisibility(\''+id+'\',this)" aria-label="Show/hide password" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:var(--ink-faint); cursor:pointer; padding:6px; display:flex;">'+icon('eye',16)+'</button>'
+    + '</div>';
+}
+function togglePasswordVisibility(id, btn){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const showing = el.type==='text';
+  el.type = showing ? 'password' : 'text';
+  btn.innerHTML = icon(showing?'eye':'eyeOff', 16);
 }
 
 /* =========================================================
@@ -3264,8 +3284,13 @@ let state = {
   _residentMedia: [], // video/audio attachments — [{type,dataUrl,name,mime}]
   _residentSubmitted: false,
   _residentSubmittedCode: null, // complaint reference code shown on the "submitted" confirmation screen
+  _residentSubmittedDefectId: null, // for the manual retry button when cloud confirmation is still pending
+  _residentSubmittedConfirmed: null, // null/true = show normal success screen, false = show the honest "not yet confirmed" screen
+  _residentSubmitting: false,
   _auditLogOpen: false,
   _auditLogQ: '',
+  sosNotifyEnabled: false,
+  _changePasswordOpen: null,
   resFilter: {q:''},
   _rateOpen: null,     // defect id whose star-rating is being picked
   _rateStars: 0,
@@ -4050,6 +4075,13 @@ async function flushSyncQueue(){
           const local = await window.storage.get(item.key, true);
           if(local && local.value !== undefined && local.value !== null){
             await fbSet(item.key, local.value);
+            // Mirrors storeSet()'s own post-write step — without this, a
+            // defect created/edited OFFLINE and only synced later via this
+            // queue would land in Firestore with no matching /assignments
+            // doc, so the worker/vendor it's assigned to would never see it.
+            if(item.key.indexOf('defect:')===0){
+              try{ syncDefectAssignment(item.key, JSON.parse(local.value)); }catch(e){}
+            }
           }
         }
         SYNC_QUEUE = SYNC_QUEUE.filter(x=> !(x.key===item.key && x.op===item.op));
@@ -4064,7 +4096,7 @@ async function flushSyncQueue(){
   }finally{ __syncFlushing = false; }
   return flushed;
 }
-async function storeSet(key, value){
+async function storeSetWithStatus(key, value){
   const json = JSON.stringify(value);
   // Always write locally first. This is what makes "offline-first" actually
   // true: every record gets a durable copy on THIS device no matter what
@@ -4084,7 +4116,11 @@ async function storeSet(key, value){
   if(cloudOk && key.indexOf('defect:')===0){
     syncDefectAssignment(key, value).catch(()=>{});
   }
-  return localOk || cloudOk;
+  return {localOk, cloudOk};
+}
+async function storeSet(key, value){
+  const r = await storeSetWithStatus(key, value);
+  return r.localOk || r.cloudOk;
 }
 async function storeGet(key){
   if(FIREBASE_ENABLED){
@@ -4352,6 +4388,8 @@ async function initTheme(){
   applyTheme();
   const savedLang = await storeGetPersonal('lang');
   state.lang = (savedLang && savedLang.value) ? savedLang.value : 'en';
+  const savedSosNotify = await storeGetPersonal('sosNotify');
+  state.sosNotifyEnabled = !!(savedSosNotify && savedSosNotify.value && ('Notification' in window) && Notification.permission==='granted');
 }
 function applyTheme(){
   document.documentElement.setAttribute('data-theme', state.theme);
@@ -4524,7 +4562,7 @@ function newStaffAccountModal(){
     + '<p style="font-size:11px; color:var(--ink-faint); margin:-6px 0 8px;">Ground Staff & Vendor accounts only ever see defects specifically assigned to them — not the full inspection data Supervisor/Admin can see.</p>'
     + '<div class="field"><label class="field-label">Trade / Specialty (optional)</label><select id="nsTrade"><option value="">— None —</option>'+VENDOR_TRADES.map(t=>'<option value="'+t.key+'">'+t.label+'</option>').join('')+'</select></div>'
     + '<p style="font-size:11px; color:var(--ink-faint); margin:-6px 0 8px;">Mainly useful for Vendor / Ground Staff — shows next to their name so it\'s clear who does what (e.g. Electrician, Plumber, Gardening).</p>'
-    + '<div class="field"><label class="field-label">Temporary password</label><input type="text" id="nsPassword" placeholder="Min 6 characters"></div>'
+    + '<div class="field"><label class="field-label">Temporary password</label>'+passwordFieldHtml('nsPassword','Min 6 characters','new-password')+'</div>'
     + (err ? '<p style="font-size:12px; color:var(--danger); margin:4px 0 0;">'+esc(err)+'</p>' : '')
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveNewStaffAccount()">Create account</button></div>'
     + '</div></div>';
@@ -4658,6 +4696,61 @@ async function removeStaffAccount(uid){
     showToast('Could not remove — check your connection and try again');
   }
 }
+// Self-service password change for whoever is CURRENTLY signed in. This is
+// the only client-safe way to change a password in this app: Firebase lets
+// a user change their OWN password (after re-proving it), but there's no
+// client-side way for an admin to set or reset a DIFFERENT person's
+// password — that needs the Admin SDK, which only runs on a server. So
+// this helps anyone who still remembers their password and wants to
+// change it, but doesn't solve someone being fully locked out (see the
+// note on the Staff Accounts card for that case).
+function openChangePassword(){
+  state._changePasswordOpen = {current:'', next:'', confirm:''};
+  state._changePasswordError = null;
+  render();
+}
+function changePasswordModal(){
+  const d = state._changePasswordOpen;
+  const err = state._changePasswordError;
+  return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
+    + '<span class="section-label">'+icon('lock',14)+' Change Password</span>'
+    + '<div class="field"><label class="field-label">Current password</label>'+passwordFieldHtml('cpCurrent',null,'current-password','state._changePasswordOpen.current=this.value')+'</div>'
+    + '<div class="field"><label class="field-label">New password</label>'+passwordFieldHtml('cpNext',null,'new-password','state._changePasswordOpen.next=this.value')+'</div>'
+    + '<div class="field"><label class="field-label">Confirm new password</label>'+passwordFieldHtml('cpConfirm',null,'new-password','state._changePasswordOpen.confirm=this.value')+'</div>'
+    + (err ? '<p style="font-size:12px; color:var(--danger); margin:4px 0 0;">'+esc(err)+'</p>' : '')
+    + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveChangePassword()">Change Password</button></div>'
+    + '</div></div>';
+}
+async function saveChangePassword(){
+  const d = state._changePasswordOpen;
+  if(!d) return;
+  if(!d.current){ state._changePasswordError='Enter your current password'; render(); return; }
+  if(!d.next || d.next.length<6){ state._changePasswordError='New password must be at least 6 characters'; render(); return; }
+  if(d.next!==d.confirm){ state._changePasswordError='New passwords don\'t match'; render(); return; }
+  state._changePasswordError = null;
+  const user = firebase.auth().currentUser;
+  if(!user){ state._changePasswordError = 'Not signed in — please sign in again'; render(); return; }
+  try{
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, d.current);
+    await fbWithTimeout(user.reauthenticateWithCredential(cred));
+  }catch(e){
+    console.error('reauthenticate before password change failed', e);
+    state._changePasswordError = 'Current password is incorrect';
+    render();
+    return;
+  }
+  try{
+    await fbWithTimeout(user.updatePassword(d.next));
+    await logAudit('password_changed', (state.currentUser?state.currentUser.name:'Someone')+' changed their own password');
+    state._changePasswordOpen = null;
+    render();
+    showToast('Password changed');
+  }catch(e){
+    console.error('update password failed', e);
+    state._changePasswordError = friendlyAuthError(e);
+    render();
+  }
+}
 
 
 /* =========================================================
@@ -4727,6 +4820,61 @@ function updateNotifBell(){
   btn.innerHTML = icon('bell',18) + (count? '<span class="badge-dot">'+(count>9?'9+':count)+'</span>' : '');
   const rBtn = document.getElementById('refreshBtn');
   if(rBtn && !rBtn.classList.contains('spinning')) rBtn.innerHTML = icon('refresh',17);
+}
+async function toggleSosNotify(){
+  if(state.sosNotifyEnabled){
+    state.sosNotifyEnabled = false;
+    await storeSetPersonal('sosNotify', {value:false});
+    render();
+    return;
+  }
+  if(!('Notification' in window)){
+    showToast('This browser doesn\'t support notifications — try Chrome, or the installed app');
+    return;
+  }
+  let perm;
+  try{ perm = await Notification.requestPermission(); }
+  catch(e){ perm = Notification.permission; }
+  if(perm!=='granted'){
+    showToast('Notification permission was not granted — check your browser or phone\'s site settings for this app');
+    render();
+    return;
+  }
+  state.sosNotifyEnabled = true;
+  await storeSetPersonal('sosNotify', {value:true});
+  render();
+  showToast('SOS alerts on — you\'ll get a notification while the app is open or when you switch back to it');
+}
+// Fires a real system notification for any active SOS this device hasn't
+// already alerted on. Only meaningfully runs for admin/supervisor, since
+// only loadAll() (not loadMyAssignedDefects) populates DB.sos — worker/
+// vendor sessions never have SOS data to check in the first place.
+// SOS_NOTIFIED_IDS is lazy-loaded once per session and persisted so a
+// page reload doesn't re-alert on SOS the device already showed.
+let SOS_NOTIFIED_IDS = null;
+async function checkSosNotifications(){
+  if(!state.sosNotifyEnabled || !('Notification' in window) || Notification.permission!=='granted') return;
+  if(SOS_NOTIFIED_IDS===null){
+    const saved = await storeGetPersonal('sosNotifiedIds');
+    SOS_NOTIFIED_IDS = new Set((saved && saved.value) || []);
+  }
+  const active = DB.sos.filter(s=>s.status==='active');
+  const fresh = active.filter(s=>!SOS_NOTIFIED_IDS.has(s.id));
+  if(!fresh.length) return;
+  fresh.forEach(s=>{
+    try{
+      const n = new Notification('🚨 SOS: '+sosKindMeta(s.kind).label, {
+        body: (s.raisedBy||'Someone')+(s.tower?' — Tower '+s.tower:'')+(s.flat?' · '+s.flat:''),
+        tag: 'sos-'+s.id,
+        requireInteraction: true
+      });
+      n.onclick = ()=>{ window.focus(); state.notifOpen=false; goto('sos',{sosFilter:{status:'active'}}); n.close(); };
+    }catch(e){ console.error('SOS notification failed', e); }
+  });
+  // Trim the remembered set down to just currently-active ids so it
+  // doesn't grow forever — a resolved SOS's id never needs remembering.
+  SOS_NOTIFIED_IDS = new Set(active.map(s=>s.id));
+  await storeSetPersonal('sosNotifiedIds', {value:[...SOS_NOTIFIED_IDS]});
 }
 
 /* =========================================================
@@ -4886,6 +5034,7 @@ async function init(){
   // later step finishing first.
   startBackgroundSync();
   await loadAll();
+  await checkSosNotifications();
   // Real data is in DB now — show it immediately. Everything below this
   // point (resume-draft, sync queue, auto-assign rules, API key, staff
   // list, external chart/export libs) is progressive enhancement: useful,
@@ -5112,6 +5261,7 @@ async function refreshData(showFeedback){
       await loadAll();
     }
     const changed = snap() !== before;
+    await checkSosNotifications();
 
     if(state.view==='fill' || state.view==='review'){
       // Never interrupt an active form fill
@@ -5575,6 +5725,13 @@ function viewHome(){
       + '<div class="btn-row" style="margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="resumeDraft()">Resume</button><button class="btn btn-sm btn-ghost" onclick="discardResumeDraft()">Discard</button></div>'
       + '</div></div>';
   }
+  if(state.role==='admin'){
+    const lastBackup = DB.audit.find(a=>a.action==='backup_exported');
+    const daysSince = lastBackup ? Math.floor((Date.now()-new Date(lastBackup.at).getTime())/86400000) : null;
+    if(daysSince===null || daysSince>=7){
+      banners += '<div class="banner warn">'+icon('download',18)+'<div><b>'+(daysSince===null?'No backup taken yet':daysSince+' days since last backup')+'</b>All data lives only in Firestore — a backup copy is cheap insurance. <span onclick="goto(\'settings\')" style="text-decoration:underline;cursor:pointer;">Back up now →</span></div></div>';
+    }
+  }
 
   const myPendingTasks = DB.tasks.filter(t=>t.status==='pending');
   const highPriorityOpen = openDefects.filter(d=>d.priority==='high');
@@ -5749,7 +5906,7 @@ function fillDailyTower(draft, def){
     const notOkCount = fd.items.filter(v=>v===false).length;
     const filledCount = fd.items.filter(v=>v!==null).length;
     const allOk = filledCount === def.floorItems.length && notOkCount === 0;
-    return '<div class="floor-card">'
+    return '<div class="floor-card" id="floorcard-'+f+'">'
       + '<div class="floor-head '+(open?'sticky-open':'')+'" onclick="toggleFloor(\''+f+'\')">'
         + '<div class="floor-head-left"><div class="floor-badge">'+(fi+1)+'</div><div><div class="floor-name">'+floorLabel(f)+'</div><div class="floor-status">'+filledCount+'/'+def.floorItems.length+' checked'+(notOkCount?' · '+notOkCount+' issue':'')+'</div></div></div>'
         + (allOk ? '' : '<button class="btn btn-sm" style="background:var(--ok);color:#fff;border:none;padding:6px 14px;font-size:12px;font-weight:800;border-radius:8px;min-height:32px;margin-right:6px;" onclick="event.stopPropagation();markFloorAllOk(\''+f+'\');">'+icon('check',13)+' All OK</button>')
@@ -6288,6 +6445,29 @@ function postRenderHooks(){
   if(canvas){ setupSigPad(canvas); }
   animateStatNums();
   initResidentCountdown();
+  scrollOpenFloorIntoView();
+}
+// A freshly-opened floor's own header + "Mark all OK" row can otherwise
+// land partly behind the fixed bottom nav on a short screen — most
+// noticeably the very first floor, open by default the moment a Daily
+// Tower inspection starts, before the person has scrolled at all. Scroll
+// its header to just below the topbar whenever the open floor changes
+// (first open, manual tap, or auto-advance) — but only then, not on every
+// re-render while it's still the same floor (e.g. tapping items inside it).
+let LAST_SCROLLED_FLOOR = null;
+function scrollOpenFloorIntoView(){
+  if(state.view!=='fill' || !state.draft || state.draft.formType!=='daily-tower'){ LAST_SCROLLED_FLOOR=null; return; }
+  const f = state.draft._openFloor;
+  if(!f || f===LAST_SCROLLED_FLOOR) return;
+  LAST_SCROLLED_FLOOR = f;
+  requestAnimationFrame(()=>{
+    const el = document.getElementById('floorcard-'+f);
+    if(!el) return;
+    const topbar = document.querySelector('.topbar');
+    const topbarH = topbar ? topbar.getBoundingClientRect().height : 0;
+    const y = el.getBoundingClientRect().top + window.scrollY - topbarH - 8;
+    window.scrollTo({top: Math.max(0,y), behavior:'smooth'});
+  });
 }
 /* Count-up animation for dashboard/home stat numbers. Only animates values
    that are plain integers (optionally with a trailing '%'); anything else
@@ -7182,9 +7362,10 @@ function renderModalLayer(){
   if(state._installOpen){ layer.innerHTML = installPromptModal(); return; }
   if(state._confirmOpen){ layer.innerHTML = confirmModal(state._confirmOpen); return; }
   if(state._auditLogOpen){ layer.innerHTML = auditLogModal(); return; }
+  if(state._changePasswordOpen){ layer.innerHTML = changePasswordModal(); return; }
   layer.innerHTML = '';
 }
-function closeModals(){ state.showPinModal=false; state._editOpen=null; state._newDefectOpen=false; state._resolveOpen=null; state._resolveAfterPhoto=null; state._newTaskOpen=false; state._taskCompleteOpen=null; state._taskCompletePhoto=null; state._userPickerRole=null; state._newMemberOpen=null; state._newStaffOpen=null; state._newStaffError=null; state._editStaffOpen=null; state._editStaffError=null; state.pinPurpose=null; state._pendingMemberId=null; state._confirmOpen=null; state._installOpen=false; state._issuePopup=null; state._issueDraft=null; state._issueAi=null; state._waShare=null; state._newVendorOpen=false; state._newSosOpen=false; state._sosMedia=[]; state._sosDetail=null; state._auditLogOpen=false; render(); }
+function closeModals(){ state.showPinModal=false; state._editOpen=null; state._newDefectOpen=false; state._resolveOpen=null; state._resolveAfterPhoto=null; state._newTaskOpen=false; state._taskCompleteOpen=null; state._taskCompletePhoto=null; state._userPickerRole=null; state._newMemberOpen=null; state._newStaffOpen=null; state._newStaffError=null; state._editStaffOpen=null; state._editStaffError=null; state.pinPurpose=null; state._pendingMemberId=null; state._confirmOpen=null; state._installOpen=false; state._issuePopup=null; state._issueDraft=null; state._issueAi=null; state._waShare=null; state._newVendorOpen=false; state._newSosOpen=false; state._sosMedia=[]; state._sosDetail=null; state._auditLogOpen=false; state._changePasswordOpen=null; state._changePasswordError=null; render(); }
 
 function installPromptModal(){
   const ios = isIOSDevice();
@@ -8053,6 +8234,7 @@ async function saveResidentComplaint(){
   await doSaveResidentComplaint();
 }
 async function doSaveResidentComplaint(){
+  if(state._residentSubmitting) return; // guard against double-tap while a save is already in flight
   const d = state._residentDraft;
   const flatLoc = 'Flat '+d.rcFlat.trim();
   const observationText = (d.rcProblem && d.rcProblem.trim()) || 'Complaint raised by resident.';
@@ -8073,14 +8255,40 @@ async function doSaveResidentComplaint(){
     status: 'open', createdAt: new Date().toISOString(), closedAt: null,
     resolvedBy: null, rating: null, review: null, ratedAt: null
   };
-  const ok = await storeSet('defect:'+defect.id, defect);
-  if(!ok){ showToast('Could not save — check your connection and try again'); return; }
-  DB.defects.unshift(defect);
-  await logAudit('resident_complaint', defect.location+' — by '+defect.residentName+' (Flat '+defect.flat+')');
-  const assigned = defect.assignedTo, mobile = memberMobile(assigned);
+
   if(state.residentMode){
+    // The public complaint link never starts background sync or the
+    // online-reconnect listener (see init() — resident mode returns
+    // early, on purpose, since it's a single-form portal). That's fine
+    // for a normal save, but if the cloud write fails here, nothing would
+    // ever come back to retry it — the record would sit local-only on
+    // this one device forever while the resident sees a "submitted"
+    // screen implying staff already has it. Give this specific save a
+    // real chance before deciding what to honestly tell them.
+    state._residentSubmitting = true; render();
+    const status = await storeSetWithStatus('defect:'+defect.id, defect);
+    if(!status.localOk && !status.cloudOk){
+      state._residentSubmitting = false;
+      showToast('Could not save — check your connection and try again');
+      render();
+      return;
+    }
+    DB.defects.unshift(defect);
+    await logAudit('resident_complaint', defect.location+' — by '+defect.residentName+' (Flat '+defect.flat+')');
+    let confirmed = status.cloudOk;
+    for(let i=0; i<4 && !confirmed; i++){
+      await new Promise(res=>setTimeout(res, 2000));
+      await flushSyncQueue();
+      confirmed = !SYNC_QUEUE.some(q=>q.key==='defect:'+defect.id);
+    }
+    // Still keep trying quietly for as long as this tab happens to stay
+    // open, in case connectivity returns later than the retries above.
+    window.addEventListener('online', ()=>{ flushSyncQueue(); });
+    state._residentSubmitting = false;
     state._residentSubmitted = true;
     state._residentSubmittedCode = defect.code;
+    state._residentSubmittedDefectId = defect.id;
+    state._residentSubmittedConfirmed = confirmed;
     state._residentFormOpen = false;
     state._residentPhotos = [];
     state._residentMedia = [];
@@ -8088,6 +8296,12 @@ async function doSaveResidentComplaint(){
     render();
     return;
   }
+
+  const ok = await storeSet('defect:'+defect.id, defect);
+  if(!ok){ showToast('Could not save — check your connection and try again'); return; }
+  DB.defects.unshift(defect);
+  await logAudit('resident_complaint', defect.location+' — by '+defect.residentName+' (Flat '+defect.flat+')');
+  const assigned = defect.assignedTo, mobile = memberMobile(assigned);
   closeResidentForm();
   showToast(T('toast_complaint_done'));
   if(assigned && mobile){
@@ -8095,6 +8309,18 @@ async function doSaveResidentComplaint(){
       msg: '🏢 Max Heights Majestic — new resident complaint\n📍 '+defect.location+' (Flat '+defect.flat+', '+defect.residentName+')\n📝 '+defect.observation+'\n🗓 '+fmtDateTime(defect.createdAt)+'\nPlease update the status in the MHM Inspection app once fixed.'}];
     render();
   }
+}
+// Manual re-try for the "saved but not yet confirmed" screen — same
+// mechanism as the automatic retries above, just triggered by hand.
+async function retryResidentSync(){
+  const id = state._residentSubmittedDefectId;
+  if(!id) return;
+  showToast('Trying again…');
+  await flushSyncQueue();
+  const confirmed = !SYNC_QUEUE.some(q=>q.key==='defect:'+id);
+  state._residentSubmittedConfirmed = confirmed;
+  render();
+  showToast(confirmed ? 'Confirmed — your complaint reached our server ✓' : 'Still couldn\'t confirm — please check your connection');
 }
 function setReviewText(id, val){ state._reviewDraft[id] = val; }
 function pickRateStars(id, n){
@@ -8166,7 +8392,7 @@ function residentFormCard(){
         + (state._residentMedia.length<3 ? videoAudioAddButtonsHtml('attachResidentVideo','attachResidentAudio') : '')
       +'</div></div>'
     + (sup.length && !state.residentMode ? '<div class="field"><label class="field-label">'+T('rc_sendto')+'</label><select id="rcAssign" onchange="state._residentDraft.rcAssign=this.value"><option value="">'+T('rc_society_assign')+'</option>'+sup.map(m=>'<option value="'+esc(m.name)+'" '+(d.rcAssign===m.name?'selected':'')+'>'+esc(m.name)+'</option>').join('')+'</select></div>' : '')
-    + '<div class="btn-row">'+(state.residentMode ? '' : '<button class="btn btn-ghost" onclick="closeResidentForm()">'+T('btn_cancel')+'</button>')+'<button class="btn btn-primary" onclick="saveResidentComplaint()">'+icon('check',15)+' '+T('rc_submit')+'</button></div>'
+    + '<div class="btn-row">'+(state.residentMode ? '' : '<button class="btn btn-ghost" onclick="closeResidentForm()">'+T('btn_cancel')+'</button>')+'<button class="btn btn-primary" '+(state._residentSubmitting?'disabled':'')+' onclick="saveResidentComplaint()">'+(state._residentSubmitting ? '<span style="display:inline-flex; animation:spin360 .8s linear infinite;">'+icon('refresh',15)+'</span> Submitting…' : icon('check',15)+' '+T('rc_submit'))+'</button></div>'
     + '</div>';
 }
 function closeResidentWindow(){
@@ -8175,6 +8401,17 @@ function closeResidentWindow(){
 }
 function residentSubmittedView(){
   const code = state._residentSubmittedCode;
+  if(state._residentSubmittedConfirmed===false){
+    return '<div class="stack" style="min-height:70vh; display:flex; justify-content:center;">'
+      + '<div class="card" style="text-align:center; padding:28px 22px;">'
+        + '<div class="empty-icon" style="margin:0 auto 14px; color:var(--warn);">'+icon('alertTriangle',30)+'</div>'
+        + '<div class="empty-title" style="font-size:20px;">Saved — not yet confirmed</div>'
+        + '<div class="empty-sub" style="font-size:13px; line-height:1.6; margin-top:8px;">We saved your complaint on this device, but couldn\'t confirm it reached our server — your connection may be weak right now. Keep this Complaint ID in case you need to follow up directly with the office.</div>'
+        + (code ? '<div style="margin-top:14px; display:inline-block; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:8px 16px;"><div style="font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); font-weight:700;">Complaint ID</div><div style="font-size:15px; font-weight:800; font-family:var(--font-mono); color:var(--ink); margin-top:2px;">'+esc(code)+'</div></div>' : '')
+        + '<div class="btn-row" style="margin-top:18px; justify-content:center;"><button class="btn btn-primary" onclick="retryResidentSync()">'+icon('refresh',15)+' Try again</button><button class="btn btn-ghost" onclick="closeResidentWindow()">Close anyway</button></div>'
+      + '</div>'
+      + '</div>';
+  }
   return '<div class="stack" style="min-height:70vh; display:flex; justify-content:center;">'
     + '<div class="card" style="text-align:center; padding:28px 22px;">'
       + '<div class="empty-icon" style="margin:0 auto 14px;">'+icon('check',30)+'</div>'
@@ -8314,15 +8551,18 @@ function viewSettings(){
     + '<div class="card"><span class="section-label">'+icon('lock',13)+' Admin Access</span>'
     + '<div class="settings-row"><div class="settings-row-text"><b>Signed in as</b><span>'+esc(state.currentUser?state.currentUser.name:'—')+' · '+esc(state.currentUser?state.currentUser.mobile:'')+' · '+roleTradeLabel(state.role, state.currentUser&&state.currentUser.trade)+'</span></div><button class="btn btn-sm btn-ghost" onclick="staffSignOut()">Sign out</button></div>'
     + '<p class="chart-fallback-note">This is a real, server-verified sign-in — Firestore itself checks your account before allowing any read or write, not just this screen. Only people an Admin has added under Staff Accounts below can sign in at all.</p>'
+    + '<div class="btn-row" style="margin-top:8px;"><button class="btn btn-sm btn-ghost" onclick="openChangePassword()">'+icon('lock',13)+' Change my password</button></div>'
     + '</div>'
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('users',13)+' Staff Accounts (sign-in)</span>'
         + '<p style="font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;">Everyone who can actually sign in and access the app\'s data. Separate from the "Team Members" list above, which is just an auto-fill label and doesn\'t grant access to anything.</p>'
         + staffAccountsListHtml()
         + '<div class="btn-row" style="margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="openNewStaffAccount()">'+icon('plus',13)+' Add Staff Account</button></div>'
-        + '<p style="font-size:11px; color:var(--ink-faint); margin-top:8px;">There\'s no self-service "forgot password" yet — if someone loses theirs, remove and re-add them with a new password.</p>'
+        + '<p style="font-size:11px; color:var(--ink-faint); margin-top:8px;">Anyone signed in can change their own password (Admin Access above). If someone forgets theirs entirely and gets locked out, there\'s still no way to reset it for them — remove and re-add with a new password (needs a different mobile number if the old sign-in was only just removed).</p>'
       + '</div>' : '')
     + '<div class="card"><span class="section-label">'+icon('bell',13)+' Notifications</span>'
     + '<div class="settings-row"><div class="settings-row-text"><b>In-app alerts</b><span>Bell icon shows overdue & breach defects</span></div><label class="switch"><input type="checkbox" checked disabled><span class="switch-track"></span></label></div>'
+    + (!isNarrowRole(state.role) ? '<div class="settings-row"><div class="settings-row-text"><b>SOS alerts on this device</b><span>System notification when a new SOS comes in, while the app is open</span></div><label class="switch"><input type="checkbox" '+(state.sosNotifyEnabled?'checked':'')+' onchange="toggleSosNotify()"><span class="switch-track"></span></label></div>'
+      + '<p class="chart-fallback-note">Fires as soon as the app next checks in while it\'s open or you switch back to it — same 45-second/refresh cycle as everything else. It can\'t wake the app up while your phone is locked or the browser\'s fully closed; that needs a real push server (see below).</p>' : '')
     + '<div class="settings-row"><div class="settings-row-text"><b>Push / WhatsApp / Email</b><span>Not connected — needs a backend + messaging provider</span></div><label class="switch"><input type="checkbox" disabled><span class="switch-track"></span></label></div>'
     + '<p class="chart-fallback-note">This app can only notify people while this page is open in a browser. Sending real push, WhatsApp, or email alerts requires a server with API keys for a provider (e.g. FCM, WhatsApp Business Cloud API, SendGrid) — that\'s a backend project, not something a browser file can do safely.</p>'
     + '</div>'
@@ -8331,7 +8571,7 @@ function viewSettings(){
         + (canManageTeam()
             ? '<div class="btn-row" style="margin-top:10px;"><button class="btn btn-sm btn-ghost" onclick="openNewMember(\'supervisor\')">'+icon('plus',13)+' Add Supervisor</button><button class="btn btn-sm btn-ghost" onclick="openNewMember(\'admin\')">'+icon('plus',13)+' Add Admin</button></div>'
             : '<p style="font-size:11.5px; color:var(--ink-faint); margin-top:8px;">Sign in as Admin to add, edit, or remove team members.</p>')
-        + '<p class="chart-fallback-note">This list just auto-fills a name/mobile into new inspections — it doesn\'t grant sign-in access to anything. For that, see Staff Accounts below.</p>'
+        + '<p class="chart-fallback-note">Optional. Everyone in Staff Accounts already shows up for auto-fill, auto-assign, and "assigned to" everywhere in the app — add someone here too only if you want their name to appear without them having a sign-in at all.</p>'
       + '</div>' : '')
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('wrench',13)+' Completed Tasks</span>' + completedTasksHtml() + '</div>' : '')
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('clipboard',13)+' Audit Log</span>'
@@ -8346,7 +8586,7 @@ function viewSettings(){
     + (FIREBASE_ENABLED
         ? '<p style="font-size:12.5px; line-height:1.6; color:var(--ok);"><b>'+icon('check',12)+' Cloud sync active</b> — inspections, defects, and the audit log are saved to this project\'s Firebase Firestore database, not just this browser. Data survives clearing browser storage, reinstalling, or switching devices, and is shared live with everyone using this same Firebase project. Dark mode, language, and in-progress draft autosave stay local to each device on purpose (see the FIREBASE_CONFIG comment in the source for why).</p>'
         : '<p style="font-size:12.5px; line-height:1.6; color:var(--warn);"><b>'+icon('alertTriangle',12)+' Cloud sync not set up</b> — data currently lives only in this browser\'s local storage (shared across everyone who opens this exact file, but not backed up anywhere else). Clearing browser data, or opening this file from a different device, means a different, empty dataset. See the FIREBASE_CONFIG comment near the top of the script for how to connect a free Firebase project so nothing gets lost — takes about 10 minutes, no coding needed beyond pasting 6 values.</p>')
-    + '<p style="font-size:12.5px; line-height:1.6; color:var(--ink-soft); margin-top:8px;">There is no server beyond that, so: no enforced user roles/permissions (the PIN is a convenience lock only), no real push/WhatsApp/email sending, and no AI-based photo analysis (crack/rust/leak detection would need a trained vision model behind a real backend — this app intentionally does not fake that). Photo tagging, housekeeping scoring, and defect tracking here are honest, rule-based features — not AI.</p>'
+    + '<p style="font-size:12.5px; line-height:1.6; color:var(--ink-soft); margin-top:8px;">There is no server beyond that, so: no real push/WhatsApp/email sending (see Notifications above), and no built-in AI vision for crack/rust/leak detection (that would need a trained vision model behind a real backend). What you do get: real, server-enforced user roles (Firestore itself checks who\'s signed in and what they\'re allowed to touch — see Staff Accounts below), and — if an Admin adds their own Claude API key in this section — optional AI photo-description on flagged issues, using that key directly from the browser. Photo tagging, housekeeping scoring, and defect tracking otherwise are honest, rule-based features — not AI.</p>'
     + '<p style="font-size:12.5px; line-height:1.6; color:var(--ink-soft); margin-top:8px;">Filling and submitting checklists works fully offline. Charts, Excel export, branded PDF reports, and the QR code need Chart.js/SheetJS/jsPDF/qrcodejs loaded from the internet — after the first successful load on a connection, a service worker keeps them working with no signal too (parking, pump room, etc.), provided this file is hosted on a real web server rather than opened directly. Without that server, those specific features fall back to a plain bar view, CSV, and browser print — checklist filling and defect tracking are unaffected either way.</p>'
     + '</div>'
     + '</div>';
@@ -8627,10 +8867,23 @@ function setSosKind(k){ state._sosKind = k; render(); }
    this only covers video/audio, which look and behave identically
    everywhere (same native-capture approach as the SOS picker above).
 ========================================================= */
+// Photos get resized+recompressed (see compressImage), but video/audio
+// can't be shrunk the same way — so cap the raw file size instead. Chosen
+// so a couple of these plus the rest of a defect's fields comfortably fit
+// under Firestore's 1MiB per-document limit even after base64 inflates
+// the file by about a third. Without this, an oversized attachment used
+// to save fine locally (IndexedDB has no such limit) while silently
+// failing to ever reach Firestore.
+const MEDIA_FILE_MAX_BYTES = 400 * 1024;
 function readMediaFile(input, type, onLoaded){
   const files = input.files;
   if(!files || !files.length) return;
   const file = files[0];
+  if(file.size > MEDIA_FILE_MAX_BYTES){
+    showToast((type==='video'?'Video':'Audio')+' is too large ('+Math.round(file.size/1024)+'KB) — please use a shorter clip, under '+Math.round(MEDIA_FILE_MAX_BYTES/1024)+'KB');
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = function(e){ onLoaded({type:type, dataUrl:e.target.result, name:file.name, mime:file.type}); };
   reader.onerror = ()=>showToast('Could not read file');
