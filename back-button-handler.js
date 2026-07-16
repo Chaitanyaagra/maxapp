@@ -21,13 +21,15 @@
   var viewStack = ['home'];
   var lastSeenView = 'home';
   var exiting = false; // true once the user has confirmed Exit
+  var primed = false; // true once the first real render() has told us the actual starting view
 
   // Flags that closeModals() (in index.html) resets — if any is truthy,
   // a modal/sheet is currently covering the screen.
   var MODAL_FLAGS = [
     'showPinModal','_editOpen','_newDefectOpen','_resolveOpen','_newTaskOpen',
     '_taskCompleteOpen','_userPickerRole','_newMemberOpen','_confirmOpen',
-    '_installOpen','_issuePopup','_newVendorOpen','_newSosOpen','_sosDetail','_waShare'
+    '_installOpen','_issuePopup','_newVendorOpen','_newSosOpen','_sosDetail','_waShare',
+    '_newStaffOpen','_editStaffOpen','_auditLogOpen'
   ];
   function isModalOpen(s){
     for(var i=0;i<MODAL_FLAGS.length;i++){ if(s[MODAL_FLAGS[i]]) return true; }
@@ -68,7 +70,14 @@
     viewStack.pop();
     var prev = viewStack[viewStack.length-1] || 'home';
     try{
-      var s = window.state;
+      // index.html declares its app state as `let state = {...}` — a
+      // top-level let/const never becomes a window property, only a
+      // plain top-level var/function does. render(), closeModals(),
+      // closeLightbox() and askConfirm() are all declared with `function`,
+      // so window.render etc. work fine — but `state` only exists as the
+      // bare identifier below (both files are classic <script>s sharing
+      // one global scope, so this resolves correctly at call time).
+      var s = state;
       if(s){
         s.view = prev;
         s._isNavigating = true;
@@ -83,7 +92,7 @@
 
   function handleBack(){
     if(exiting) return;
-    var s = window.state;
+    var s = state;
     if(!s){ return; }
 
     // Photo lightbox has its own dedicated close function.
@@ -116,14 +125,26 @@
     var original = window.render;
     var wrapped = function(){
       var out = original.apply(this, arguments);
-      var s = window.state;
-      if(s && s.view && s.view!==lastSeenView){
-        if(viewStack[viewStack.length-1]!==s.view){
-          viewStack.push(s.view);
-          if(viewStack.length>40) viewStack.splice(1,1); // keep root, trim oldest middle entry
+      var s = state;
+      if(s && s.view){
+        // init() has to guess the starting view before login/auth (async)
+        // resolves, so it can be wrong — e.g. a vendor/worker account ends
+        // up on 'mydefects', not the 'home' default init() saw first. The
+        // first real render is ground truth: adopt it as the stack's root
+        // instead of treating it as a navigation away from a guessed page
+        // the user never actually saw.
+        if(!primed){
+          primed = true;
+          lastSeenView = s.view;
+          viewStack = [s.view];
+        } else if(s.view!==lastSeenView){
+          if(viewStack[viewStack.length-1]!==s.view){
+            viewStack.push(s.view);
+            if(viewStack.length>40) viewStack.splice(1,1); // keep root, trim oldest middle entry
+          }
+          lastSeenView = s.view;
+          arm();
         }
-        lastSeenView = s.view;
-        arm();
       }
       return out;
     };
@@ -144,7 +165,7 @@
   }
 
   function init(){
-    var s = window.state;
+    var s = state;
     lastSeenView = (s && s.view) || 'home';
     viewStack = [lastSeenView];
     if(!wrapRender()) setTimeout(wrapRender, 300);

@@ -174,6 +174,7 @@ a { color: inherit; }
 #splash .splash-bar { width: 140px; height: 3px; background: rgba(255, 255, 255, 0.2); border-radius: 99px; overflow: hidden; margin-top: 6px; }
 #splash .splash-bar-fill { height: 100%; width: 40%; background: #fff; border-radius: 99px; animation: splashLoad 1.1s ease-in-out infinite; }
 #splash .splash-powered { color: rgba(255, 255, 255, 0.45); font-size: 9.5px; letter-spacing: .06em; margin-top: -10px; }
+#splash .splash-powered b { color: var(--gold-soft); font-weight: 800; letter-spacing: .08em; }
 
 @keyframes splashPulse {
   0%, 100% { transform: scale(1); }
@@ -254,6 +255,17 @@ html[data-theme="dark"] .topbar {
   transition: all .2s ease;
 }
 .role-switch button.active { background: #fff; color: var(--brand-dark); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
+/* Static, read-only — who's signed in and what their role/trade is.
+   Replaces the old interactive Supervisor/Admin switch: role now only
+   ever changes by signing out and a different account signing in. */
+.role-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--gold-tint); border: 1px solid rgba(184, 145, 46, 0.25);
+  color: var(--ink); font-size: 12px; font-weight: 700;
+  padding: 7px 12px; border-radius: 999px; letter-spacing: .02em;
+}
+.role-badge svg { flex-shrink: 0; color: var(--gold); }
+.role-badge:empty { display: none; }
 @media (max-width: 380px) {
   .topbar { padding: calc(12px + env(safe-area-inset-top)) 10px; }
   .icon-btn { width: 32px; height: 32px; }
@@ -1548,6 +1560,12 @@ body.has-actionbar{padding-bottom:150px;}
   font-size:12.5px; color:rgba(255,255,255,0.72); margin-top:3px;
   font-weight:600; position:relative; z-index:1;
 }
+.hero-identity{
+  font-size:12.5px; color:rgba(255,255,255,0.88); margin-top:6px;
+  font-weight:700; position:relative; z-index:1;
+  display:flex; align-items:center; gap:5px;
+}
+.hero-identity svg{ color:#D4AF37; flex-shrink:0; }
 .hero-strip{
   display:flex; gap:8px; margin-top:14px; position:relative; z-index:1; flex-wrap:wrap;
 }
@@ -2608,7 +2626,7 @@ button, [role="button"], .tile, .card, .record-card, .defect-card {
   <img src="icon-192.png" id="splashLogo" alt="Max Heights Majestic">
   <div class="splash-title">Max Heights Majestic</div>
   <div class="splash-sub">Inspection System</div>
-  <div class="splash-powered">Powered by RWA</div>
+  <div class="splash-powered">Powered by <b>RWA</b></div>
   <div class="splash-bar"><div class="splash-bar-fill"></div></div>
 </div>
 
@@ -2633,10 +2651,7 @@ button, [role="button"], .tile, .card, .record-card, .defect-card {
     </div>
   </div>
   <div class="topbar-row">
-    <div class="role-switch">
-      <button id="roleSupBtn" onclick="setRole('supervisor')">👤 Supervisor</button>
-      <button id="roleAdmBtn" onclick="requestAdminSwitch()">🛡️ Admin</button>
-    </div>
+    <div class="role-badge" id="roleBadge"></div>
   </div>
 </div>
 
@@ -3248,6 +3263,9 @@ let state = {
   _residentPhotos: [],
   _residentMedia: [], // video/audio attachments — [{type,dataUrl,name,mime}]
   _residentSubmitted: false,
+  _residentSubmittedCode: null, // complaint reference code shown on the "submitted" confirmation screen
+  _auditLogOpen: false,
+  _auditLogQ: '',
   resFilter: {q:''},
   _rateOpen: null,     // defect id whose star-rating is being picked
   _rateStars: 0,
@@ -3649,7 +3667,7 @@ function getSecondaryAuth(){
   return secApp.auth();
 }
 
-async function adminCreateStaffAccount(mobile, password, role, name){
+async function adminCreateStaffAccount(mobile, password, role, name, trade){
   const db = await initFirebase();
   if(!db) throw new Error('No connection — check your internet and try again');
   const auth2 = getSecondaryAuth();
@@ -3657,9 +3675,9 @@ async function adminCreateStaffAccount(mobile, password, role, name){
   const cred = await fbWithTimeout(auth2.createUserWithEmailAndPassword(email, password), 12000);
   const uid = cred.user.uid;
   try{ await auth2.signOut(); }catch(e){}
-  const staffData = {role, name:name.trim(), mobile:mobile.trim(), addedAt: firebase.firestore.FieldValue.serverTimestamp(), addedBy: STAFF_DOC?STAFF_DOC.name:null};
+  const staffData = {role, name:name.trim(), mobile:mobile.trim(), trade: trade||'', addedAt: firebase.firestore.FieldValue.serverTimestamp(), addedBy: STAFF_DOC?STAFF_DOC.name:null};
   await fbWithTimeout(db.collection('staff').doc(uid).set(staffData));
-  return {uid, role, name:staffData.name, mobile:staffData.mobile};
+  return {uid, role, name:staffData.name, mobile:staffData.mobile, trade:staffData.trade};
 }
 
 async function staffSignOut(){
@@ -3695,10 +3713,22 @@ function isNarrowRole(role){
 function roleLabel(role){
   return {admin:'Admin', supervisor:'Supervisor', worker:'Ground Staff', vendor:'Vendor'}[role] || role;
 }
+// "Vendor · Electrician" style label — falls back to just the role name
+// when no trade is set, so it's always safe to call. Reuses the same
+// VENDOR_TRADES vocabulary as the separate Vendors (AMC contacts) list
+// further down, so "Electrician"/"Plumber"/etc. mean the same thing
+// whether it's a vendor CONTACT or a signed-in staff ACCOUNT.
+function roleTradeLabel(role, trade){
+  const t = trade && VENDOR_TRADES.find(x=>x.key===trade);
+  return roleLabel(role) + (t ? ' · '+t.label : '');
+}
+function roleIcon(role){
+  return {admin:'shield', supervisor:'users', vendor:'briefcase', worker:'wrench'}[role] || 'users';
+}
 async function onStaffAuthenticated(user, staffData){
   AUTH_USER = user;
   STAFF_DOC = staffData;
-  state.currentUser = {name: staffData.name, mobile: staffData.mobile, role: staffData.role};
+  state.currentUser = {name: staffData.name, mobile: staffData.mobile, role: staffData.role, trade: staffData.trade||''};
   state.role = staffData.role;
   state.adminUnlocked = (staffData.role==='admin');
   state._authScreen = null;
@@ -4158,6 +4188,21 @@ async function logAudit(action, details){
    UTIL
 ========================================================= */
 function uid(p){ return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+// Short reference code shown to residents + staff for a resident complaint
+// (separate from the internal uid() storage key above). Built purely from
+// the current date/time + a random suffix — deliberately NOT a count of
+// existing complaints, because the public ?resident=1 link is create-only
+// in Firestore (residents can never read the complaints list), so a
+// resident's browser has no way to know how many complaints already exist
+// and a counter would show "complaint #1" to every single resident.
+function genComplaintId(){
+  const d = new Date();
+  const y = String(d.getFullYear()).slice(2);
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  const rand = Math.random().toString(36).slice(2,6).toUpperCase();
+  return 'MHM-C'+y+m+day+'-'+rand;
+}
 /* Local (device-timezone) YYYY-MM-DD key — deliberately NOT toISOString(),
    which is always UTC and, for IST (UTC+5:30), silently returns "yesterday"
    between 12:00 AM and 5:29 AM. Accepts nothing (→ now), a Date, or an ISO
@@ -4333,21 +4378,6 @@ async function setLang(lang){
   render();
 }
 
-/* =========================================================
-   ADMIN PIN (convenience lock — NOT secure authentication;
-   anyone with browser devtools can bypass this. It only
-   deters accidental role switches on a shared device.)
-========================================================= */
-function requestAdminSwitch(){
-  if(state.adminUnlocked){ state.role='admin'; state.view='home'; state._isNavigating=true; render(); return; }
-  askConfirm({
-    title: 'Admin account se sign in karo',
-    message: 'Admin dekhne ke liye apne admin mobile number + password se sign in karna hoga. Ab sign out karke login screen par jaayein?',
-    confirmLabel: 'Sign out & login',
-    danger: false,
-    onConfirm: staffSignOut
-  });
-}
 async function submitPin(entered){
   if(state.pinPurpose==='memberlogin'){
     const m = DB.members.find(x=>x.id===state._pendingMemberId);
@@ -4430,6 +4460,12 @@ async function saveMember(){
   const role = (document.getElementById('memRole')||{}).value || 'supervisor';
   const pin = (document.getElementById('memPin')||{}).value?.trim() || '';
   if(pin && pin.length<4){ showToast('PIN must be at least 4 digits, or left blank'); return; }
+  // One mobile number = one member, regardless of role — otherwise the
+  // same number could end up listed twice under different roles here.
+  // (Staff Accounts doesn't need this check separately: it goes through
+  // Firebase Auth, which already enforces one account per mobile number.)
+  const dupe = DB.members.find(x=> x.mobile===mobile && x.id!==editingId);
+  if(dupe){ showToast('This mobile number is already used by '+dupe.name+' ('+roleLabel(dupe.role)+') — edit or remove that entry first'); return; }
   let member, isNew = false;
   if(editingId){
     member = DB.members.find(x=>x.id===editingId);
@@ -4486,6 +4522,8 @@ function newStaffAccountModal(){
     + '<div class="field"><label class="field-label">Mobile number</label><input type="tel" inputmode="numeric" maxlength="10" id="nsMobile" placeholder="10-digit mobile" oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,10)"></div>'
     + '<div class="field"><label class="field-label">Role</label><select id="nsRole"><option value="supervisor">Supervisor</option><option value="admin">Admin</option><option value="worker">Ground Staff (Guard/Housekeeping)</option><option value="vendor">Vendor</option></select></div>'
     + '<p style="font-size:11px; color:var(--ink-faint); margin:-6px 0 8px;">Ground Staff & Vendor accounts only ever see defects specifically assigned to them — not the full inspection data Supervisor/Admin can see.</p>'
+    + '<div class="field"><label class="field-label">Trade / Specialty (optional)</label><select id="nsTrade"><option value="">— None —</option>'+VENDOR_TRADES.map(t=>'<option value="'+t.key+'">'+t.label+'</option>').join('')+'</select></div>'
+    + '<p style="font-size:11px; color:var(--ink-faint); margin:-6px 0 8px;">Mainly useful for Vendor / Ground Staff — shows next to their name so it\'s clear who does what (e.g. Electrician, Plumber, Gardening).</p>'
     + '<div class="field"><label class="field-label">Temporary password</label><input type="text" id="nsPassword" placeholder="Min 6 characters"></div>'
     + (err ? '<p style="font-size:12px; color:var(--danger); margin:4px 0 0;">'+esc(err)+'</p>' : '')
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveNewStaffAccount()">Create account</button></div>'
@@ -4495,13 +4533,14 @@ async function saveNewStaffAccount(){
   const name = (document.getElementById('nsName')||{}).value?.trim() || '';
   const mobile = (document.getElementById('nsMobile')||{}).value?.trim() || '';
   const role = (document.getElementById('nsRole')||{}).value || 'supervisor';
+  const trade = (document.getElementById('nsTrade')||{}).value || '';
   const password = (document.getElementById('nsPassword')||{}).value || '';
   if(!name){ state._newStaffError='Enter a name'; render(); return; }
   if(!/^\d{10}$/.test(mobile)){ state._newStaffError='Enter a valid 10-digit mobile number'; render(); return; }
   if(password.length<6){ state._newStaffError='Password must be at least 6 characters'; render(); return; }
   state._newStaffError = null;
   try{
-    const created = await adminCreateStaffAccount(mobile, password, role, name);
+    const created = await adminCreateStaffAccount(mobile, password, role, name, trade);
     DB.staff.push(created);
     DB.staff.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     await logAudit('staff_added', name+' ('+role+') — mobile '+mobile);
@@ -4522,7 +4561,7 @@ function staffAccountsListHtml(){
     const isSelf = AUTH_USER && s.uid===AUTH_USER.uid;
     const isLastAdmin = s.role==='admin' && adminCount<=1;
     return '<div class="item-row" style="gap:8px;">'
-      + '<div style="flex:1; min-width:0;"><b style="font-size:13px;">'+esc(s.name)+'</b>'+(isSelf?' <span style="color:var(--ink-faint); font-weight:400; font-size:11.5px;">(you)</span>':'')+'<div style="font-size:11.5px; color:var(--ink-soft);">'+esc(s.mobile)+' · '+roleLabel(s.role)+'</div></div>'
+      + '<div style="flex:1; min-width:0;"><b style="font-size:13px;">'+esc(s.name)+'</b>'+(isSelf?' <span style="color:var(--ink-faint); font-weight:400; font-size:11.5px;">(you)</span>':'')+'<div style="font-size:11.5px; color:var(--ink-soft);">'+esc(s.mobile)+' · '+roleTradeLabel(s.role, s.trade)+'</div></div>'
       + '<button class="btn btn-sm btn-ghost" onclick="openEditStaffAccount(\''+s.uid+'\')">Edit</button>'
       + (isLastAdmin ? '' : '<button class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="confirmRemoveStaffAccount(\''+s.uid+'\')">Remove</button>')
       + '</div>';
@@ -4532,7 +4571,7 @@ function staffAccountsListHtml(){
 function openEditStaffAccount(uid){
   const s = DB.staff.find(x=>x.uid===uid);
   if(!s) return;
-  state._editStaffOpen = {uid, name:s.name, role:s.role};
+  state._editStaffOpen = {uid, name:s.name, role:s.role, trade:s.trade||''};
   state._editStaffError = null;
   render();
 }
@@ -4549,6 +4588,7 @@ function editStaffAccountModal(){
     + '<div class="field"><label class="field-label">Mobile number (sign-in ID)</label><input type="text" value="'+esc(s.mobile)+'" disabled style="opacity:.6;"></div>'
     + '<p style="font-size:11px; color:var(--ink-faint); margin:-6px 0 8px;">Can\'t be changed here — remove and re-add with the new number instead.</p>'
     + '<div class="field"><label class="field-label">Role</label><select id="esRole" onchange="state._editStaffOpen.role=this.value" '+(isLastAdmin?'disabled':'')+'><option value="supervisor" '+(d.role==='supervisor'?'selected':'')+'>Supervisor</option><option value="admin" '+(d.role==='admin'?'selected':'')+'>Admin</option><option value="worker" '+(d.role==='worker'?'selected':'')+'>Ground Staff (Guard/Housekeeping)</option><option value="vendor" '+(d.role==='vendor'?'selected':'')+'>Vendor</option></select></div>'
+    + '<div class="field"><label class="field-label">Trade / Specialty (optional)</label><select id="esTrade" onchange="state._editStaffOpen.trade=this.value"><option value="">— None —</option>'+VENDOR_TRADES.map(t=>'<option value="'+t.key+'" '+(d.trade===t.key?'selected':'')+'>'+t.label+'</option>').join('')+'</select></div>'
     + (isLastAdmin ? '<p style="font-size:11px; color:var(--warn); margin-top:-6px;">This is the only Admin account — add another Admin before changing this one\'s role.</p>' : '')
     + (err ? '<p style="font-size:12px; color:var(--danger); margin:4px 0 0;">'+esc(err)+'</p>' : '')
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="saveEditStaffAccount()">Save</button></div>'
@@ -4569,12 +4609,13 @@ async function saveEditStaffAccount(){
   try{
     const db = await initFirebase();
     if(!db) throw new Error('No connection — check your internet and try again');
-    await fbWithTimeout(db.collection('staff').doc(d.uid).update({role: d.role, name}));
-    s.role = d.role; s.name = name;
+    const trade = d.trade || '';
+    await fbWithTimeout(db.collection('staff').doc(d.uid).update({role: d.role, name, trade}));
+    s.role = d.role; s.name = name; s.trade = trade;
     if(AUTH_USER && d.uid===AUTH_USER.uid){
       // Editing your own account — keep the local session in sync too.
-      STAFF_DOC.role = d.role; STAFF_DOC.name = name;
-      state.currentUser = {name, mobile:s.mobile, role:d.role};
+      STAFF_DOC.role = d.role; STAFF_DOC.name = name; STAFF_DOC.trade = trade;
+      state.currentUser = {name, mobile:s.mobile, role:d.role, trade};
       state.role = d.role; state.adminUnlocked = (d.role==='admin');
     }
     await logAudit('staff_edited', name+' → '+d.role);
@@ -4802,7 +4843,7 @@ async function init(){
       if(staffData){
         AUTH_USER = restoredUser;
         STAFF_DOC = staffData;
-        state.currentUser = {name: staffData.name, mobile: staffData.mobile, role: staffData.role};
+        state.currentUser = {name: staffData.name, mobile: staffData.mobile, role: staffData.role, trade: staffData.trade||''};
         state.role = staffData.role;
         state.adminUnlocked = (staffData.role==='admin');
         authed = true;
@@ -4826,17 +4867,37 @@ async function init(){
 
   if(isNarrowRole(state.role)){
     state.view = 'mydefects';
+    startBackgroundSync();
     await loadMyAssignedDefects(AUTH_USER.uid);
     state._isNavigating = true;
     showAppNow();
     bindKeyboardAvoidance();
-    startBackgroundSync();
     clearTimeout(watchdog);
     forceShowApp();
     return;
   }
 
+  // Background refresh is armed BEFORE the first load even starts, not
+  // after it and a chain of other setup — so if this initial loadAll()
+  // is slow (weak connection, cold Firestore query) or the 3s watchdog
+  // below fires first and shows an empty/stale screen, the 45s tick
+  // (and the visibility-change listener) are already running and will
+  // pick up real data on their own shortly, without depending on every
+  // later step finishing first.
+  startBackgroundSync();
   await loadAll();
+  // Real data is in DB now — show it immediately. Everything below this
+  // point (resume-draft, sync queue, auto-assign rules, API key, staff
+  // list, external chart/export libs) is progressive enhancement: useful,
+  // but none of it should gate the first real paint, since a slow step
+  // here used to silently hold back showAppNow() too — worst case, the
+  // screen just sat on the 3s watchdog fallback (empty DB) until this
+  // entire chain finished, which on a weak connection could take far
+  // longer than 3s.
+  state._isNavigating = true;
+  showAppNow();
+  bindKeyboardAvoidance();
+
   state.resumeDraft = await storeGetPersonal('draftautosave');
   try{
     const q = await storeGetPersonal('syncqueue');
@@ -4848,13 +4909,10 @@ async function init(){
   if(SYNC_QUEUE.length) flushSyncQueue();
   window.addEventListener('online', ()=>{ flushSyncQueue().then(n=>{ if(n && !state.residentMode) refreshData(false); }); });
   loadExternalLibs();
-  state._isNavigating = true;
-  showAppNow();
-  startBackgroundSync();
   pruneAuditLog();
-  bindKeyboardAvoidance();
   registerLibraryCacheSW();
   checkForTaskPopup();
+  render(); // reflect resumeDraft / staff list / anything else the progressive loads above just filled in
   }catch(e){
     console.error('init failed — showing app with local data', e);
   }finally{
@@ -4886,6 +4944,7 @@ function isPwaInstalled(){
       || localStorage.getItem('mhm_pwa_installed') === '1';
 }
 function shouldShowInstallPrompt(){
+  if(state.residentMode) return false; // public complaint link — don't push random residents to install the staff app
   if(isPwaInstalled()) return false;
   if(location.protocol !== 'https:' && location.hostname !== 'localhost') return false;
   const __snz = localStorage.getItem('mhm_install_snoozed');
@@ -5099,13 +5158,6 @@ document.addEventListener('click', (e)=>{
 /* =========================================================
    ROLE / NAV / RENDER ROOT
 ========================================================= */
-function setRole(r){
-  if(r==='admin'){ requestAdminSwitch(); return; }
-  // Viewing as supervisor is available to any signed-in staff member —
-  // admins previewing this way keep their real (admin-level) Firestore
-  // access; it only changes which nav items/features are shown.
-  state.role = r; state.view='home'; state._isNavigating=true; render();
-}
 function goto(view, extra){
   state.view = view;
   state._isNavigating = true;
@@ -5130,15 +5182,13 @@ function render(){
   if(active && active.id && document.getElementById('app').contains(active) && (active.tagName==='INPUT' || active.tagName==='TEXTAREA')){
     focusRestore = {id:active.id, start:active.selectionStart, end:active.selectionEnd};
   }
-  const supBtn = document.getElementById('roleSupBtn');
-  const admBtn = document.getElementById('roleAdmBtn');
-  if(supBtn){
-    supBtn.classList.toggle('active', state.role==='supervisor');
-    supBtn.innerHTML = icon('users',13)+' '+(state.lang==='hi'?'सुपरवाइज़र':'Supervisor');
-  }
-  if(admBtn){
-    admBtn.classList.toggle('active', state.role==='admin');
-    admBtn.innerHTML = icon('shield',13)+' '+(state.lang==='hi'?'एडमिन':'Admin');
+  const roleBadge = document.getElementById('roleBadge');
+  if(roleBadge){
+    if(state.currentUser){
+      roleBadge.innerHTML = icon(roleIcon(state.role),13)+' '+esc(roleTradeLabel(state.role, state.currentUser.trade));
+    } else {
+      roleBadge.innerHTML = '';
+    }
   }
   const app = document.getElementById('app');
 
@@ -5257,7 +5307,7 @@ const NAV_ITEMS = {
   ],
   admin: [
     {v:'home', icon:'home', labelKey:'nav_home'},
-    {v:'dashboard', icon:'barChart', labelKey:'nav_dashboard'},
+    {v:'newpick', icon:'plus', labelKey:'nav_new'},
     {v:'records', icon:'clipboard', labelKey:'nav_records'},
     {v:'defects', icon:'alertTriangle', labelKey:'nav_defects'},
     {v:'settings', icon:'settings', labelKey:'nav_settings'}
@@ -5402,13 +5452,11 @@ function homeHero(todayCount, openCount, streak){
               : h<17 ? (hi?'नमस्ते':'Good afternoon')
               : (hi?'शुभ संध्या':'Good evening');
   const dateStr = new Date().toLocaleDateString(hi?'hi-IN':'en-IN', {weekday:'long', day:'numeric', month:'long'});
+  const cu = state.currentUser;
   return '<div class="hero-card">'
     + '<div class="hero-greet">'+greet+' 👋</div>'
     + '<div class="hero-date">'+dateStr+'</div>'
-    + '<div class="hero-role-switch">'
-      + '<button class="hrs-btn '+(state.role==='supervisor'?'active':'')+'" onclick="setRole(\'supervisor\')">'+icon('users',14)+' '+(hi?'सुपरवाइज़र':'Supervisor')+'</button>'
-      + '<button class="hrs-btn '+(state.role==='admin'?'active':'')+'" onclick="requestAdminSwitch()">'+icon('shield',14)+' '+(hi?'एडमिन':'Admin')+'</button>'
-    + '</div>'
+    + (cu && cu.name ? '<div class="hero-identity">'+icon(roleIcon(state.role),12)+' '+esc(cu.name)+' · '+esc(roleTradeLabel(state.role, cu.trade))+'</div>' : '')
     + '<div class="hero-strip">'
       + '<div class="hero-chip" onclick="goto(\'records\',{recFilter:{type:\'all\', q:\''+todayStr()+'\'}})"><span class="hc-num">'+todayCount+'</span> '+(hi?'आज फ़ाइल':'Filed today')+'</div>'
       + '<div class="hero-chip'+(openCount?' hc-danger':'')+'" onclick="goto(\'defects\',{defFilter:{status:\'open\',priority:\'all\',q:\'\'}})"><span class="hc-num">'+openCount+'</span> '+(hi?'खुले दोष':'Open defects')+'</div>'
@@ -5738,11 +5786,33 @@ function setFloorItem(f,ii,val){
   const fd = state.draft.floorData[f];
   fd.items[ii] = fd.items[ii]===val ? null : val;
   if(fd.items[ii]===false){ reopenFloorIssue(f, ii); return; }
+  maybeAdvanceFloor(f);
   render();
+}
+// After any single item on a floor gets its final value — whether marked
+// OK directly here, or an issue confirmed via the popup in saveIssuePopup()
+// — check whether that was the floor's last remaining item and, if
+// Auto-advance is on, move to the next floor. Mirrors markFloorAllOk()'s
+// own advance step below, so the toggle's promise ("auto-advance to next
+// floor after all items checked") holds true no matter how the floor got
+// completed — including the common case of tapping through items one at a
+// time on a floor that has a real issue on it, where the bulk "Mark all
+// OK" button isn't usable in the first place.
+function maybeAdvanceFloor(f){
+  const draft = state.draft;
+  if(!draft || draft.formType!=='daily-tower' || !draft._autoAdvance) return;
+  if(draft._openFloor !== f) return; // already moved on, or not the active floor
+  const fd = draft.floorData[f];
+  if(!fd || fd.items.some(v=>v===null)) return; // not complete yet
+  const def = SECTION_DEFS['daily-tower'];
+  const idx = def.floors.indexOf(f);
+  const next = def.floors[idx+1];
+  draft._openFloor = next || null;
+  if(next) showToast(f+' floor done — moved to '+next);
 }
 function reopenFloorIssue(f, ii){
   const def = SECTION_DEFS['daily-tower'];
-  openIssuePopup(f+'_'+ii, def.floorItems[ii], def.floorItems[ii]+' — '+f+' Floor', null);
+  openIssuePopup(f+'_'+ii, def.floorItems[ii], def.floorItems[ii]+' — '+f+' Floor', {type:'floor', f:f});
 }
 function markFloorAllOk(f){
   const fd = state.draft.floorData[f];
@@ -5943,6 +6013,21 @@ function memberMobile(name){
 function assignableWorkers(){
   return (DB.staff||[]).filter(s=>isNarrowRole(s.role));
 }
+// Every assignable person, from wherever they're recorded — Staff Accounts
+// (any role: admin/supervisor/worker/vendor — the authoritative, real
+// sign-in list) unioned with the older Team Members roster (auto-fill
+// only, no login) by name, so someone added under just one of the two
+// still shows up as an assignment option everywhere in the app. Staff
+// Accounts is checked first since it's the more complete, more current
+// source of truth; Team Members only fills in names that aren't already
+// covered (e.g. a supervisor who hasn't been given a real login yet).
+function allAssignablePeople(){
+  const seen = new Set();
+  const out = [];
+  (DB.staff||[]).forEach(s=>{ if(s.name && !seen.has(s.name)){ seen.add(s.name); out.push({name:s.name, role:s.role, trade:s.trade||''}); } });
+  (DB.members||[]).forEach(m=>{ if(m.name && !seen.has(m.name)){ seen.add(m.name); out.push({name:m.name, role:m.role, trade:''}); } });
+  return out;
+}
 function resolveWorkerUidByName(name){
   if(!name) return null;
   const w = (DB.staff||[]).find(s=>isNarrowRole(s.role) && s.name===name);
@@ -5950,15 +6035,11 @@ function resolveWorkerUidByName(name){
 }
 // Suggestions (not a hard restriction — assignedTo stays free text so any
 // legacy/unlisted value still displays correctly) for "Assigned To"
-// fields: the old member roster plus real worker accounts. Only a name
-// picked from here (or that happens to match exactly) resolves to a real
-// account and grants that worker visibility on the defect via
-// syncDefectAssignment() below.
+// fields: every assignable person. Only a name picked from here (or that
+// happens to match exactly) resolves to a real account and grants that
+// worker visibility on the defect via syncDefectAssignment() below.
 function assignSuggestOptionsHtml(){
-  const names = new Set();
-  assignableMembers().forEach(m=>names.add(m.name));
-  assignableWorkers().forEach(w=>names.add(w.name));
-  return [...names].map(n=>'<option value="'+esc(n)+'">').join('');
+  return allAssignablePeople().map(p=>'<option value="'+esc(p.name)+'">').join('');
 }
 // Keeps /assignments/{defectId} in sync with a defect's assignedTo name —
 // this is the whole reason a worker's Firestore rules can enforce "only
@@ -6072,11 +6153,19 @@ function saveIssuePopup(){
     row.tags = d.tags.slice();
     row.flagged = true;
   }
+  if(p.writeBack && p.writeBack.type==='floor'){
+    maybeAdvanceFloor(p.writeBack.f);
+  }
   state._issuePopup = null; state._issueDraft = null;
   render();
   showToast('Issue saved — it will be logged as a defect on submit');
 }
-function skipIssuePopup(){ state._issuePopup=null; state._issueDraft=null; state._issueAi=null; render(); }
+function skipIssuePopup(){
+  const p = state._issuePopup;
+  state._issuePopup=null; state._issueDraft=null; state._issueAi=null;
+  if(p && p.writeBack && p.writeBack.type==='floor') maybeAdvanceFloor(p.writeBack.f);
+  render();
+}
 function issueSuggest(){
   const p = state._issuePopup; if(!p) return;
   state._issueDraft.observation = suggestDefectText(p.label);
@@ -6149,7 +6238,7 @@ async function analyzePhotoWithClaude(dataUrl){
 function issuePopupModal(){
   const p=state._issuePopup,d=state._issueDraft;
   if(!p||!d)return '';
-  const sup=assignableMembers();
+  const sup=allAssignablePeople();
   const hasKey=!!CLAUDE_API_KEY;
   const aiTip=hasKey
     ? '<div style="font-size:11px;color:var(--ok);font-weight:700;margin-bottom:6px;">'+icon('spark',11)+' Photo lo - AI description auto-fill karega</div>'
@@ -6198,6 +6287,7 @@ function postRenderHooks(){
   const canvas = document.getElementById('sigpad');
   if(canvas){ setupSigPad(canvas); }
   animateStatNums();
+  initResidentCountdown();
 }
 /* Count-up animation for dashboard/home stat numbers. Only animates values
    that are plain integers (optionally with a trailing '%'); anything else
@@ -6351,7 +6441,7 @@ function viewReview(){
           + '<div class="defect-obs">'+esc(pd.observation)+'</div>'
           + (pd.recurring? '<p class="chart-fallback-note" style="margin-top:4px;">This location has had '+RECURRING_THRESHOLD+'+ issues logged in the last '+RECURRING_WINDOW_DAYS+' days — priority was bumped up automatically.</p>' : '')
           + '<div class="field" style="margin-top:8px; margin-bottom:0;"><label class="field-label">Assign supervisor</label><select onchange="setReviewAssign(\''+pd.stableId+'\',this.value)"><option value="">— Assign later —</option>'
-            + assignableMembers().map(m=>'<option value="'+esc(m.name)+'" '+(pd.assignedTo===m.name?'selected':'')+'>'+esc(m.name)+'</option>').join('')
+            + allAssignablePeople().map(m=>'<option value="'+esc(m.name)+'" '+(pd.assignedTo===m.name?'selected':'')+'>'+esc(m.name)+'</option>').join('')
           + '</select></div>'
           + '<div class="photo-row" style="flex-wrap:wrap; margin-top:8px;">'
               + pd.photos.map((ph,i)=>'<span style="position:relative; display:inline-block;"><img class="photo-thumb" src="'+ph+'"><button type="button" class="lightbox-close" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; font-size:11px; background:var(--danger); box-shadow:0 1px 4px rgba(0,0,0,.3);" onclick="removeReviewPhoto(\''+pd.stableId+'\','+i+')">✕</button></span>').join('')
@@ -6761,7 +6851,7 @@ function defectCard(def){
   const priorityLabelKey = {high:'priority_high', medium:'priority_medium', low:'priority_low'};
   const overdueLabel = (def.status==='open'||def.status==='in-progress') && overdue ? 'OVERDUE '+age+'d' : null;
   return '<div class="defect-card priority-'+def.priority+' '+(breach?'breach':'')+'" style="margin-bottom:8px;cursor:pointer;" onclick="if(!event.target.closest(\'button,.photo-thumb,.ba-item,img\')) openDefectEdit(\''+def.id+'\')">'
-    + '<div class="defect-top"><div><div class="defect-loc">'+esc(def.location)+'</div><div class="defect-meta">'+(def.source==='resident' ? (def.flat? 'Flat '+esc(def.flat)+' · ' : '')+'Resident Complaint' : 'Tower '+def.tower+' · '+defectFormLabel(def))+(def.assignedTo? ' · '+icon('users',10)+' '+esc(def.assignedTo) : '')+'</div></div>'
+    + '<div class="defect-top"><div>'+(def.source==='resident' && def.code? '<div style="font-size:10.5px; font-family:var(--font-mono); color:var(--ink-faint); font-weight:700; letter-spacing:.02em; margin-bottom:2px;">'+esc(def.code)+'</div>' : '')+'<div class="defect-loc">'+esc(def.location)+'</div><div class="defect-meta">'+(def.source==='resident' ? (def.flat? 'Flat '+esc(def.flat)+' · ' : '')+'Resident Complaint' : 'Tower '+def.tower+' · '+defectFormLabel(def))+(def.assignedTo? ' · '+icon('users',10)+' '+esc(def.assignedTo) : '')+'</div></div>'
     + '<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;"><span class="pill '+def.priority+'">'+T(priorityLabelKey[def.priority])+'</span>'
     + (breach?'<span class="pill breach">critical breach</span>':(overdueLabel?'<span class="pill overdue" style="font-weight:900;letter-spacing:.03em;">'+overdueLabel+'</span>':''))
     + (recurring?'<span class="pill recurring">'+icon('refresh',10)+' recurring</span>':'')+'</div></div>'
@@ -7091,9 +7181,10 @@ function renderModalLayer(){
   if(state._newSosOpen){ layer.innerHTML = newSosModal(); return; }
   if(state._installOpen){ layer.innerHTML = installPromptModal(); return; }
   if(state._confirmOpen){ layer.innerHTML = confirmModal(state._confirmOpen); return; }
+  if(state._auditLogOpen){ layer.innerHTML = auditLogModal(); return; }
   layer.innerHTML = '';
 }
-function closeModals(){ state.showPinModal=false; state._editOpen=null; state._newDefectOpen=false; state._resolveOpen=null; state._resolveAfterPhoto=null; state._newTaskOpen=false; state._taskCompleteOpen=null; state._taskCompletePhoto=null; state._userPickerRole=null; state._newMemberOpen=null; state._newStaffOpen=null; state._newStaffError=null; state._editStaffOpen=null; state._editStaffError=null; state.pinPurpose=null; state._pendingMemberId=null; state._confirmOpen=null; state._installOpen=false; state._issuePopup=null; state._issueDraft=null; state._issueAi=null; state._waShare=null; state._newVendorOpen=false; state._newSosOpen=false; state._sosMedia=[]; state._sosDetail=null; render(); }
+function closeModals(){ state.showPinModal=false; state._editOpen=null; state._newDefectOpen=false; state._resolveOpen=null; state._resolveAfterPhoto=null; state._newTaskOpen=false; state._taskCompleteOpen=null; state._taskCompletePhoto=null; state._userPickerRole=null; state._newMemberOpen=null; state._newStaffOpen=null; state._newStaffError=null; state._editStaffOpen=null; state._editStaffError=null; state.pinPurpose=null; state._pendingMemberId=null; state._confirmOpen=null; state._installOpen=false; state._issuePopup=null; state._issueDraft=null; state._issueAi=null; state._waShare=null; state._newVendorOpen=false; state._newSosOpen=false; state._sosMedia=[]; state._sosDetail=null; state._auditLogOpen=false; render(); }
 
 function installPromptModal(){
   const ios = isIOSDevice();
@@ -7147,6 +7238,7 @@ function defectEditModal(id){
   if(!def) return '';
   return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
     + '<span class="section-label">Edit Defect</span>'
+    + (def.source==='resident' && def.code ? '<div style="font-size:11px; font-family:var(--font-mono); color:var(--ink-soft); margin:-6px 0 10px;">'+esc(def.code)+' · '+esc(def.location)+'</div>' : '')
     + '<div class="field"><label class="field-label">Assigned To</label><input type="text" id="edAssign" list="assignSuggest" value="'+esc(def.assignedTo)+'"></div>'
     + '<datalist id="assignSuggest">'+assignSuggestOptionsHtml()+'</datalist>'
     + '<div class="field"><label class="field-label">Target Completion Date</label><input type="date" id="edTarget" value="'+(def.targetDate||'')+'"></div>'
@@ -7969,7 +8061,7 @@ async function doSaveResidentComplaint(){
   // so priority/tags/vendor are set without anyone having to press Analyze.
   const ai = aiAnalyzeIssue({label:'Resident Complaint', location:flatLoc, observation:observationText, existingTags:['Resident Complaint'], hasPhoto: state._residentPhotos.length>0});
   const defect = {
-    id: uid('def'), sourceRecordId: null, formType: 'resident', source: 'resident',
+    id: uid('def'), code: genComplaintId(), sourceRecordId: null, formType: 'resident', source: 'resident',
     residentName: d.rcName.trim(), flat: d.rcFlat.trim(), mobile: (d.rcMobile||'').trim(),
     tower: d.rcTower || 'A',
     location: flatLoc,
@@ -7988,12 +8080,12 @@ async function doSaveResidentComplaint(){
   const assigned = defect.assignedTo, mobile = memberMobile(assigned);
   if(state.residentMode){
     state._residentSubmitted = true;
+    state._residentSubmittedCode = defect.code;
     state._residentFormOpen = false;
     state._residentPhotos = [];
     state._residentMedia = [];
     state._residentDraft = {};
     render();
-    setTimeout(()=>{ try{ window.close(); }catch(e){} }, 1200);
     return;
   }
   closeResidentForm();
@@ -8043,7 +8135,7 @@ function residentRatingWidget(c){
 function residentComplaintCard(c){
   const statusLabelKey = {open:'status_open', 'in-progress':'status_inprogress', closed:'status_closed'};
   return '<div class="defect-card priority-'+c.priority+'" style="margin-bottom:10px;">'
-    + '<div class="defect-top"><div><div class="defect-loc">'+esc(c.location)+'</div><div class="defect-meta">'+esc(c.residentName||'—')+' · Flat '+esc(c.flat||'—')+(c.mobile? ' · <a href="tel:'+esc(c.mobile)+'" style="color:inherit;">'+esc(c.mobile)+' '+icon('phone',10)+'</a>' : '')+' · '+fmtDateTime(c.createdAt)+'</div></div>'
+    + '<div class="defect-top"><div>'+(c.code? '<div style="font-size:10.5px; font-family:var(--font-mono); color:var(--ink-faint); font-weight:700; letter-spacing:.02em; margin-bottom:2px;">'+esc(c.code)+'</div>' : '')+'<div class="defect-loc">'+esc(c.location)+'</div><div class="defect-meta">'+esc(c.residentName||'—')+' · Flat '+esc(c.flat||'—')+(c.mobile? ' · <a href="tel:'+esc(c.mobile)+'" style="color:inherit;">'+esc(c.mobile)+' '+icon('phone',10)+'</a>' : '')+' · '+fmtDateTime(c.createdAt)+'</div></div>'
     + '<span class="pill '+c.status+'">'+T(statusLabelKey[c.status])+'</span></div>'
     + '<div class="defect-obs">'+esc(c.observation)+'</div>'
     + (c.assignedTo? '<div class="defect-meta" style="margin-top:4px;">'+icon('users',10)+' Assigned to '+esc(c.assignedTo)+'</div>':'')
@@ -8057,7 +8149,7 @@ function residentComplaintCard(c){
 }
 function residentFormCard(){
   const d = state._residentDraft || {};
-  const sup = assignableMembers().concat(assignableWorkers());
+  const sup = allAssignablePeople();
   return '<div class="card">'
     + '<span class="section-label">'+icon('plus',14)+' '+T('btn_raise_complaint')+'</span>'
     + '<div class="two-col"><div class="field"><label class="field-label">'+T('rc_name')+'</label><input type="text" id="rcName" placeholder="e.g. Rohit Sharma" value="'+esc(d.rcName||'')+'" oninput="state._residentDraft.rcName=this.value"></div>'
@@ -8082,14 +8174,39 @@ function closeResidentWindow(){
   showToast('You can close this page now');
 }
 function residentSubmittedView(){
+  const code = state._residentSubmittedCode;
   return '<div class="stack" style="min-height:70vh; display:flex; justify-content:center;">'
     + '<div class="card" style="text-align:center; padding:28px 22px;">'
       + '<div class="empty-icon" style="margin:0 auto 14px;">'+icon('check',30)+'</div>'
       + '<div class="empty-title" style="font-size:20px;">Complaint submitted</div>'
       + '<div class="empty-sub" style="font-size:13px; line-height:1.6; margin-top:8px;">Thank you. Your complaint has been sent to the maintenance team. You may close this page now.</div>'
+      + (code ? '<div style="margin-top:14px; display:inline-block; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:8px 16px;"><div style="font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-faint); font-weight:700;">Complaint ID</div><div style="font-size:15px; font-weight:800; font-family:var(--font-mono); color:var(--ink); margin-top:2px;">'+esc(code)+'</div></div>' : '')
       + '<button class="btn btn-primary" style="margin-top:18px;" onclick="closeResidentWindow()">Close</button>'
+      + '<div style="font-size:11.5px; color:var(--ink-faint); margin-top:10px;">Closing automatically in <b id="rcCountdownNum">10</b>s…</div>'
     + '</div>'
     + '</div>';
+}
+// Ticks the countdown above down to 0, then attempts to auto-close the tab —
+// so a resident who filed a complaint never has to remember to tap Close.
+// Guarded with a dataset flag on the element (same pattern as
+// animateStatNums above) because postRenderHooks() runs after every
+// render(); without the guard, any extra render would spawn a second
+// interval racing the first.
+function initResidentCountdown(){
+  const el = document.getElementById('rcCountdownNum');
+  if(!el || el.dataset.started) return;
+  el.dataset.started = '1';
+  let n = 10;
+  const timer = setInterval(()=>{
+    if(!document.body.contains(el)){ clearInterval(timer); return; }
+    n -= 1;
+    if(n <= 0){
+      clearInterval(timer);
+      closeResidentWindow();
+      return;
+    }
+    el.textContent = n;
+  }, 1000);
 }
 function viewResidents(){
   if(state.residentMode){
@@ -8152,10 +8269,6 @@ async function showResidentQr(){
 function viewSettings(){
   return '<div class="pageheader"><div><div class="pagetitle">'+icon('settings',19)+' Settings</div></div></div>'
     + '<div class="stack">'
-    + '<div class="card"><span class="section-label">'+icon('users',13)+' Role</span>'
-    + '<div class="settings-row"><div class="settings-row-text"><b>'+(state.lang==='hi'?'मोड बदलें':'Switch mode')+'</b><span>'+(state.lang==='hi'?'एडमिन के लिए PIN चाहिए':'Admin needs the PIN')+'</span></div>'
-      + '<div class="role-switch"><button class="'+(state.role==='supervisor'?'active':'')+'" onclick="setRole(\'supervisor\')">'+icon('users',13)+' '+(state.lang==='hi'?'सुपरवाइज़र':'Supervisor')+'</button><button class="'+(state.role==='admin'?'active':'')+'" onclick="requestAdminSwitch()">'+icon('shield',13)+' '+(state.lang==='hi'?'एडमिन':'Admin')+'</button></div>'
-    + '</div></div>'
     + '<div class="card"><span class="section-label">'+icon('device-mobile-down',13)+' App Install</span>'
     + (isPwaInstalled()
         ? '<div class="settings-row"><div class="settings-row-text"><b>Installed</b><span>Home screen se already khulta hai, full app ki tarah</span></div><span style="color:var(--ok); font-weight:700; display:flex; align-items:center;">'+icon('check',16)+'</span></div>'
@@ -8186,15 +8299,20 @@ function viewSettings(){
       + '<img id="resQrImg" alt="Resident link QR" style="display:none; width:160px; height:160px; margin-top:10px; background:#fff; padding:8px; border-radius:10px;">'
     + '</div>'
     + '<div class="card"><span class="section-label">'+icon('users',13)+' Auto-assign Rules</span>'
-      + '<p style="font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;">Tag ke hisaab se issue apne aap sahi supervisor ko assign ho jaye — e.g. Electrical Hazard → electrician. Manual assign hamesha in rules ko override karta hai.</p>'
-      + [...TAG_OPTIONS, 'Resident Complaint'].map(tag=>
-          '<div class="item-row" style="gap:10px;"><span class="item-name" style="flex:1;">'+tag+'</span><select style="max-width:170px;" onchange="saveAutoAssignRule(\''+tag.replace(/'/g,"\\\\'")+'\',this.value)"><option value="">— No rule —</option>'
-          + assignableMembers().map(m=>'<option value="'+esc(m.name)+'" '+(AUTO_ASSIGN[tag]===m.name?'selected':'')+'>'+esc(m.name)+'</option>').join('')
-          + '</select></div>'
-        ).join('')
+      + '<p style="font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;">Tag ke hisaab se issue apne aap sahi banda ko assign ho jaye — supervisor, admin, vendor ya staff, koi bhi — e.g. Electrical Hazard → electrician. Manual assign hamesha in rules ko override karta hai.</p>'
+      + (function(){
+          // Every assignable person — Staff Accounts of any role plus the
+          // Team Members roster, unioned by name (see allAssignablePeople).
+          const people = allAssignablePeople();
+          return [...TAG_OPTIONS, 'Resident Complaint'].map(tag=>
+              '<div class="item-row" style="gap:10px;"><span class="item-name" style="flex:1;">'+tag+'</span><select style="max-width:170px;" onchange="saveAutoAssignRule(\''+tag.replace(/'/g,"\\\\'")+'\',this.value)"><option value="">— No rule —</option>'
+              + people.map(m=>'<option value="'+esc(m.name)+'" '+(AUTO_ASSIGN[tag]===m.name?'selected':'')+'>'+esc(m.name)+' ('+roleLabel(m.role)+')</option>').join('')
+              + '</select></div>'
+            ).join('');
+        })()
     + '</div>'
     + '<div class="card"><span class="section-label">'+icon('lock',13)+' Admin Access</span>'
-    + '<div class="settings-row"><div class="settings-row-text"><b>Signed in as</b><span>'+esc(state.currentUser?state.currentUser.name:'—')+' · '+esc(state.currentUser?state.currentUser.mobile:'')+' · '+roleLabel(state.role)+'</span></div><button class="btn btn-sm btn-ghost" onclick="staffSignOut()">Sign out</button></div>'
+    + '<div class="settings-row"><div class="settings-row-text"><b>Signed in as</b><span>'+esc(state.currentUser?state.currentUser.name:'—')+' · '+esc(state.currentUser?state.currentUser.mobile:'')+' · '+roleTradeLabel(state.role, state.currentUser&&state.currentUser.trade)+'</span></div><button class="btn btn-sm btn-ghost" onclick="staffSignOut()">Sign out</button></div>'
     + '<p class="chart-fallback-note">This is a real, server-verified sign-in — Firestore itself checks your account before allowing any read or write, not just this screen. Only people an Admin has added under Staff Accounts below can sign in at all.</p>'
     + '</div>'
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('users',13)+' Staff Accounts (sign-in)</span>'
@@ -8216,7 +8334,9 @@ function viewSettings(){
         + '<p class="chart-fallback-note">This list just auto-fills a name/mobile into new inspections — it doesn\'t grant sign-in access to anything. For that, see Staff Accounts below.</p>'
       + '</div>' : '')
     + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('wrench',13)+' Completed Tasks</span>' + completedTasksHtml() + '</div>' : '')
-    + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('clipboard',13)+' Audit Log</span>' + auditLogHtml() + '</div>' : '')
+    + (state.role==='admin' ? '<div class="card"><span class="section-label">'+icon('clipboard',13)+' Audit Log</span>'
+        + '<div class="settings-row"><div class="settings-row-text"><b>'+DB.audit.length+' action'+(DB.audit.length!==1?'s':'')+' logged</b><span>Every inspection, defect, staff and settings change — searchable</span></div><button class="btn btn-sm btn-ghost" onclick="openAuditLog()">View</button></div>'
+      + '</div>' : '')
     + '<div class="card"><span class="section-label">Data</span>'
     + '<div class="btn-row"><button class="btn btn-ghost" onclick="exportBackup()">'+icon('download',15)+' Export backup (JSON)</button></div>'
     + (state.role==='admin' ? googleDriveBackupSectionHtml() : '')
@@ -8241,9 +8361,31 @@ function auditActionCategory(action){
   return 'info'; // report_generated, backup_exported, member_edited, staff_edited, etc.
 }
 function auditLogHtml(){
-  const entries = DB.audit.slice(0,40);
+  const entries = DB.audit;
   if(!entries.length) return '<p style="font-size:12.5px; color:var(--ink-faint);">No activity logged yet.</p>';
   return entries.map(e=> '<div class="item-row" style="flex-direction:column; align-items:stretch;"><div style="display:flex; justify-content:space-between; align-items:center;"><b style="font-size:12px; display:flex; align-items:center; gap:6px;"><span class="audit-dot audit-dot-'+auditActionCategory(e.action)+'"></span>'+e.action.replace(/_/g,' ')+(e.by?' — '+esc(e.by):'')+'</b><span class="defect-meta">'+fmtDateTime(e.at)+'</span></div><span style="font-size:11.5px; color:var(--ink-soft); margin-left:14px;">'+esc(e.details||'')+'</span></div>').join('');
+}
+function openAuditLog(){ state._auditLogOpen = true; render(); }
+function auditLogModal(){
+  const q = (state._auditLogQ||'').trim().toLowerCase();
+  let entries = DB.audit;
+  if(q){
+    entries = entries.filter(e=>
+      e.action.replace(/_/g,' ').toLowerCase().includes(q) ||
+      (e.by||'').toLowerCase().includes(q) ||
+      (e.details||'').toLowerCase().includes(q)
+    );
+  }
+  const html = (()=>{
+    if(!entries.length) return '<p style="font-size:12.5px; color:var(--ink-faint);">'+(q? 'No matching activity.' : 'No activity logged yet.')+'</p>';
+    return entries.map(e=> '<div class="item-row" style="flex-direction:column; align-items:stretch;"><div style="display:flex; justify-content:space-between; align-items:center;"><b style="font-size:12px; display:flex; align-items:center; gap:6px;"><span class="audit-dot audit-dot-'+auditActionCategory(e.action)+'"></span>'+e.action.replace(/_/g,' ')+(e.by?' — '+esc(e.by):'')+'</b><span class="defect-meta">'+fmtDateTime(e.at)+'</span></div><span style="font-size:11.5px; color:var(--ink-soft); margin-left:14px;">'+esc(e.details||'')+'</span></div>').join('');
+  })();
+  return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
+    + '<span class="section-label">'+icon('clipboard',14)+' Audit Log ('+DB.audit.length+')</span>'
+    + '<div class="field search-field" style="margin:8px 0;"><input type="text" placeholder="Search by action, person or detail…" value="'+esc(state._auditLogQ||'')+'" oninput="state._auditLogQ=this.value; renderModalLayer();"></div>'
+    + '<div class="stack" style="gap:8px;">'+html+'</div>'
+    + '<div class="btn-row" style="margin-top:10px;"><button class="btn btn-primary" onclick="closeModals()">Close</button></div>'
+    + '</div></div>';
 }
 function teamMembersHtml(){
   if(!DB.members.length) return '<p style="font-size:12.5px; color:var(--ink-faint); margin-bottom:4px;">No team members added yet — inspections still ask for name/mobile manually until you add some.</p>';
