@@ -1,4 +1,4 @@
-const C='mhm-v26',R='mhm-r26';
+const C='mhm-v31',R='mhm-r31';
 const PRE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png','./icon-192-maskable.png','./icon-512-maskable.png','./apple-touch-icon-180.png','./apple-touch-icon-167.png','./apple-touch-icon-152.png','./apple-touch-icon-120.png','./logo-mark.png','./back-button-handler.js'];
 const CDN=['cdnjs.cloudflare.com','fonts.googleapis.com','fonts.gstatic.com','www.gstatic.com'];
 const SKIP=['firestore.googleapis.com','firebase.googleapis.com','identitytoolkit.googleapis.com','securetoken.googleapis.com'];
@@ -9,21 +9,38 @@ self.addEventListener('fetch',e=>{
   const url=new URL(req.url);
   if(SKIP.some(h=>url.hostname.includes(h))) return;
   if(CDN.some(h=>url.hostname.includes(h))){
-    e.respondWith(caches.match(req).then(h=>h||fetch(req).then(r=>{caches.open(R).then(c=>c.put(req,r.clone()));return r;}).catch(()=>new Response('',{status:503}))));
+    e.respondWith(caches.match(req).then(h=>h||fetch(req).then(r=>{caches.open(R).then(c=>c.put(req,r.clone())).catch(()=>{});return r;}).catch(()=>new Response('',{status:503}))));
     return;
   }
   if(url.origin===self.location.origin){
-    e.respondWith(fetch(req).then(r=>{caches.open(C).then(c=>c.put(req,r.clone()));return r;}).catch(()=>caches.match(req).then(h=>{
-      if(h) return h;
-      // Only an actual page load should ever fall back to the app shell.
-      // Any other resource type (script, image, etc.) that's neither
-      // fetchable nor cached should fail normally — returning index.html's
-      // HTML in its place would hit the browser as the wrong content type
-      // (e.g. a .js request parsed as JS would error on the literal "<" of
-      // "<!DOCTYPE...").
-      if(req.mode==='navigate' || req.destination==='document') return caches.match('./index.html');
-      return new Response('', {status:504, statusText:'Offline and not cached'});
-    })));
+    // Stale-while-revalidate: an already-cached response is served
+    // immediately — the page never sits waiting on a slow/flaky
+    // connection (e.g. a basement with weak signal) — while a fetch
+    // still goes out in the background to refresh the cache for next
+    // time. e.waitUntil keeps that background fetch alive even after
+    // respondWith's promise has already settled and been handed back to
+    // the page; without it the SW can be torn down mid-fetch once
+    // nothing is "pending" from the browser's point of view, and the
+    // cache would never actually get refreshed. Only when there's
+    // nothing cached yet (first-ever load, or a file added to PRE since
+    // the last install) does the page actually wait on the network —
+    // same fallback chain as before if that also fails.
+    const network = fetch(req).then(r=>{ caches.open(C).then(c=>c.put(req,r.clone())).catch(()=>{}); return r; }).catch(()=>null);
+    e.waitUntil(network);
+    e.respondWith(caches.match(req).then(cached=>{
+      if(cached) return cached;
+      return network.then(r=>{
+        if(r) return r;
+        // Only an actual page load should ever fall back to the app shell.
+        // Any other resource type (script, image, etc.) that's neither
+        // fetchable nor cached should fail normally — returning index.html's
+        // HTML in its place would hit the browser as the wrong content type
+        // (e.g. a .js request parsed as JS would error on the literal "<" of
+        // "<!DOCTYPE...").
+        if(req.mode==='navigate' || req.destination==='document') return caches.match('./index.html');
+        return new Response('', {status:504, statusText:'Offline and not cached'});
+      });
+    }));
   }
 });
 self.addEventListener('message',e=>{

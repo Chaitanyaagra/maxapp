@@ -131,6 +131,7 @@ body {
   padding-bottom: 88px;
   min-height: 100vh;
   position: relative;
+  transition: padding-bottom .18s ease;
 }
 
 html[data-lang="hi"] body { line-height: 1.65; }
@@ -565,6 +566,28 @@ html[data-theme="dark"] .btn-ghost .ripple { background: rgba(255, 255, 255, 0.1
 .stack > .tile:nth-child(5) { animation-delay: .33s; }
 @media (prefers-reduced-motion: reduce) {
   .stat-grid .stat-card, .stack > .tile { animation: none; }
+}
+
+/* Staggered cascade for checklist rows revealed inside a floor/section
+   accordion (chip-grid on Daily Tower, section-body on the sectioned
+   forms). Applied only via the .stagger-in marker class, which the
+   fillDailyTower()/fillSectioned() renderers add to a floor or section
+   for exactly one render — the one right after it opens — then clear.
+   That's what keeps this from replaying on every keystroke/tap inside
+   an already-open floor (every interaction re-renders #app from
+   scratch, so an unconditional animation here would re-fire constantly). */
+.stagger-in > * { animation: cardEnter .32s cubic-bezier(.16, 1, .3, 1) both; }
+.stagger-in > *:nth-child(1) { animation-delay: .01s; }
+.stagger-in > *:nth-child(2) { animation-delay: .04s; }
+.stagger-in > *:nth-child(3) { animation-delay: .07s; }
+.stagger-in > *:nth-child(4) { animation-delay: .10s; }
+.stagger-in > *:nth-child(5) { animation-delay: .13s; }
+.stagger-in > *:nth-child(6) { animation-delay: .16s; }
+.stagger-in > *:nth-child(7) { animation-delay: .19s; }
+.stagger-in > *:nth-child(8) { animation-delay: .22s; }
+.stagger-in > *:nth-child(n+9) { animation-delay: .25s; }
+@media (prefers-reduced-motion: reduce) {
+  .stagger-in > * { animation: none; }
 }
 
 /* ===== Skeleton loaders ===== */
@@ -1407,10 +1430,19 @@ html[data-theme="dark"] .ai-assist-card{background:linear-gradient(180deg, rgba(
    reliably move above the on-screen keyboard on mobile browsers — some
    float on top of it, some sit uselessly below the visible area. Rather
    than fight that per-browser, body.keyboard-open (toggled from JS on
-   focus/blur of inputs inside #app, see bindKeyboardAvoidance) hides the
-   bottom nav and sticky action bar entirely while a field is focused, so
-   neither can overlap the keyboard or the field being typed into. */
-body.keyboard-open .bottomnav, body.keyboard-open .sticky-actionbar{display:none;}
+   focus/blur of inputs inside #app, see bindKeyboardAvoidance) slides the
+   bottom nav and sticky action bar out of the way while a field is
+   focused, so neither can overlap the keyboard or the field being typed
+   into. transform+transition rather than display:none: iOS Safari's
+   visualViewport resize events fire repeatedly with jittery intermediate
+   heights while the keyboard is still animating, and an instant snap is
+   what turns that jitter into visible flicker — see bindKeyboardAvoidance
+   for the matching debounce on the JS side of this same fix. */
+.bottomnav, .sticky-actionbar{ transition: transform .18s ease; will-change: transform; }
+body.keyboard-open .bottomnav, body.keyboard-open .sticky-actionbar{
+  transform: translateY(120%);
+  pointer-events: none;
+}
 /* Full-screen photo viewer — tap any photo thumbnail to open, tap anywhere to close */
 .lightbox-overlay{position:fixed; inset:0; z-index:200; background:rgba(10,14,20,0.92); display:flex; align-items:center; justify-content:center; padding:16px; animation:fadeSlideIn .15s ease; cursor:zoom-out;}
 .lightbox-overlay img{max-width:100%; max-height:92vh; border-radius:10px; box-shadow:0 8px 40px rgba(0,0,0,0.5); touch-action:pinch-zoom;}
@@ -1476,6 +1508,14 @@ html[data-theme="dark"] .notif-item:hover{background:rgba(255,255,255,0.06);}
 .settings-row:last-child{border-bottom:none;}
 .settings-row-text b{display:block; font-size:13.5px;}
 .settings-row-text span{font-size:11.5px; color:var(--ink-soft);}
+.weather-loc-results{display:flex; flex-direction:column; gap:4px; margin-top:6px;}
+.weather-loc-result{
+  display:flex; align-items:center; gap:8px; text-align:left; cursor:pointer;
+  border:1px solid var(--border); background:var(--surface); border-radius:9px;
+  padding:8px 10px; font-size:12.5px; color:var(--ink); transition:background .15s ease;
+}
+.weather-loc-result:hover{ background:var(--surface-2); }
+.weather-loc-result:active{ transform:scale(0.99); }
 /* sticky action bar */
 .sticky-actionbar{
   position:fixed; left:0; right:0; bottom:88px; z-index:25; background:var(--surface); border-top:1px solid var(--border);
@@ -1654,6 +1694,68 @@ body.has-actionbar{padding-bottom:150px;}
   letter-spacing:.02em;
 }
 .weather-badge svg{ flex-shrink:0; }
+
+/* ── Live-weather ambient states (sunny/clear-night/windy/cloudy) — added
+   alongside the rain family above. Same container (.weather-layer), same
+   contract: absolute/inset:0, z-index:0 behind the greeting text, and
+   fully covered by the prefers-reduced-motion rule below since it hides
+   the whole .weather-layer regardless of which variant is inside it. ── */
+.sun-disc{
+  position:absolute; top:12px; right:14px; width:44px; height:44px; border-radius:50%;
+  background:radial-gradient(circle, var(--gold-soft) 0%, var(--gold-light) 55%, transparent 75%);
+  box-shadow:0 0 22px 6px rgba(212,175,55,0.32);
+  animation:sunPulse 5s ease-in-out infinite;
+}
+.sun-rays{
+  position:absolute; top:1px; right:-9px; width:66px; height:66px; border-radius:50%;
+  background:repeating-conic-gradient(rgba(233,206,123,0.38) 0deg 4deg, transparent 4deg 30deg);
+  -webkit-mask:radial-gradient(circle, transparent 42%, black 55%, black 68%, transparent 76%);
+  mask:radial-gradient(circle, transparent 42%, black 55%, black 68%, transparent 76%);
+  animation:sunRotate 50s linear infinite;
+}
+@keyframes sunPulse{
+  0%, 100%{ transform:scale(1); opacity:.88; }
+  50%{ transform:scale(1.07); opacity:1; }
+}
+@keyframes sunRotate{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+
+.moon-disc{
+  position:absolute; top:13px; right:16px; width:36px; height:36px; border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #F1F5F9 0%, #CBD5E1 60%, transparent 78%);
+  box-shadow:0 0 16px 4px rgba(226,232,240,0.22);
+  animation:moonGlow 6s ease-in-out infinite;
+}
+.star{
+  position:absolute; border-radius:50%; background:#fff;
+  animation:starTwinkle ease-in-out infinite;
+}
+@keyframes moonGlow{ 0%, 100%{ opacity:.78; } 50%{ opacity:1; } }
+@keyframes starTwinkle{ 0%, 100%{ opacity:.15; transform:scale(.75); } 50%{ opacity:1; transform:scale(1.15); } }
+
+.wind-gust{
+  position:absolute; height:2.5px; border-radius:2px; left:-60px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.7) 35%, rgba(255,255,255,0.7) 65%, transparent);
+  animation:windDrift linear infinite;
+}
+@keyframes windDrift{
+  0%{ transform:translateX(0) scaleX(.7); opacity:0; }
+  15%{ opacity:.9; }
+  50%{ transform:translateX(210px) scaleX(1); }
+  80%{ opacity:.55; }
+  100%{ transform:translateX(420px) scaleX(.7); opacity:0; }
+}
+
+.cloud-shape{
+  position:absolute; left:-90px;
+  animation:cloudDrift linear infinite;
+  opacity:.9;
+}
+.cloud-shape svg{ display:block; }
+@keyframes cloudDrift{
+  0%{ transform:translateX(0); }
+  100%{ transform:translateX(460px); }
+}
+
 @media (prefers-reduced-motion: reduce){
   .weather-layer{ display:none; }
 }
@@ -2762,6 +2864,8 @@ const ICONS = {
   bell: '<path d="M6.2 8.4a5.8 5.8 0 0111.6 0c0 5 1.9 6.3 1.9 6.3H4.3s1.9-1.3 1.9-6.3z"/><path d="M10.2 19.6a1.9 1.9 0 003.6 0"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.3M12 19.2v2.3M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.3M19.2 12h2.3M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/>',
   moon: '<path d="M20 14.2A8 8 0 119.8 4a6.4 6.4 0 0010.2 10.2z"/>',
+  wind: '<path d="M3 8h10.5a2.5 2.5 0 10-2.5-2.5"/><path d="M3 13h14.5a2.8 2.8 0 11-2.8 2.8"/><path d="M3 18h8.5a2 2 0 10-2-2"/>',
+  cloud: '<path d="M7.5 18a4.3 4.3 0 01-.6-8.56A5.6 5.6 0 0117.6 9.9 4.1 4.1 0 0117 18H7.5z"/>',
   camera: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8.2 7l1.3-2.6h5l1.3 2.6"/><circle cx="12" cy="13.6" r="3.4"/>',
   qrcode: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14.5" y="14.5" width="2.5" height="2.5"/><rect x="18.5" y="14.5" width="2.5" height="2.5"/><rect x="14.5" y="18.5" width="2.5" height="2.5"/><rect x="18.5" y="18.5" width="2.5" height="2.5"/>',
   check: '<polyline points="4 12.5 9 17.5 20 5.5"/>',
@@ -2800,6 +2904,7 @@ const ICONS = {
   siren: '<path d="M7 17v-4.5a5 5 0 0110 0V17"/><rect x="5" y="17" width="14" height="3.5" rx="1"/><line x1="12" y1="2.5" x2="12" y2="4.6"/><line x1="4.5" y1="5.5" x2="6" y2="7"/><line x1="19.5" y1="5.5" x2="18" y2="7"/>',
   logout: '<path d="M14.5 4H7a2 2 0 00-2 2v12a2 2 0 002 2h7.5"/><polyline points="16 8 20 12 16 16"/><line x1="9.5" y1="12" x2="20" y2="12"/>',
   calendar: '<rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="7" y1="17" x2="9" y2="17"/><line x1="11" y1="13" x2="17" y2="13"/><line x1="11" y1="17" x2="14" y2="17"/>',
+  mapPin: '<path d="M12 2.5c-4.1 0-7.5 3.3-7.5 7.4 0 5.5 7.5 12.1 7.5 12.1s7.5-6.6 7.5-12.1c0-4.1-3.4-7.4-7.5-7.4z"/><circle cx="12" cy="9.8" r="2.4"/>',
   'device-mobile-down': '<rect x="5" y="2" width="14" height="20" rx="3"/><line x1="9" y1="6" x2="15" y2="6"/><path d="M9.5 14l2.5 2.5 2.5-2.5"/><line x1="12" y1="11" x2="12" y2="16.5"/>',
   cloudUpload: '<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>',
 
@@ -3444,7 +3549,10 @@ let state = {
   _sosDetail: null,               // id of SOS whose detail popup is open
   _sosKind: 'general',             // selected emergency type inside the raise-SOS sheet
   _resolveAfterPhoto: null,          // after-photo held during defect resolution modal
-  _driveBackupBusy: false            // true while a Google Drive backup upload is in flight
+  _driveBackupBusy: false,            // true while a Google Drive backup upload is in flight
+  _weatherLocQuery: '',    // typed-but-unsaved city search text in Settings > Weather Ambience
+  _weatherLocResults: null, // geocoding search results for that query, or null before any search
+  _weatherLocSearching: false // true while a geocoding search is in flight
 };
 let DB = { inspections: [], defects: [], audit: [], tasks: [], members: [], vendors: [], sos: [], staff: [] };
 let LIBS = { chart:false, xlsx:false, jspdf:false, qrcode:false };
@@ -4982,15 +5090,28 @@ function renderNotifPanel(){
   const layer = document.getElementById('notifLayer');
   if(!state.notifOpen){ layer.innerHTML=''; return; }
   const list = computeNotifications();
+  // Bumped on every (re)compute of the list, and baked into each row's
+  // onclick alongside its index. closeNotifAndGo() below refuses to act
+  // unless the generation it was drawn with still matches the current
+  // one — so if the list is ever regenerated while the panel is open
+  // (today that only happens via toggle/close/outside-click, all
+  // synchronous with the click itself, but this makes it safe even if a
+  // future change — e.g. a live-refresh-while-open feature — calls
+  // renderNotifPanel() from somewhere async too), a click against a
+  // now-replaced list is dropped instead of indexing into the wrong one.
+  const gen = (window.__notifListGen||0) + 1;
   layer.innerHTML = '<div class="notif-panel glass card" onclick="event.stopPropagation()">'
     + '<div style="display:flex; align-items:center; justify-content:space-between; padding:6px 8px 10px;"><b style="font-size:13.5px;">Notifications</b><button class="icon-btn" style="background:transparent; color:var(--ink-faint); width:28px; height:28px;" onclick="toggleNotifPanel()">'+icon('x',15)+'</button></div>'
-    + (list.length? list.map((n,i)=>'<div class="notif-item" onclick="closeNotifAndGo('+i+')"><div class="notif-icon '+n.type+'">'+icon(n.type==='critical'?'alertTriangle':n.type==='warn'?'flag':'info',15)+'</div><div class="notif-text">'+esc(n.text)+'</div></div>').join('')
+    + (list.length? list.map((n,i)=>'<div class="notif-item" onclick="closeNotifAndGo('+gen+','+i+')"><div class="notif-icon '+n.type+'">'+icon(n.type==='critical'?'alertTriangle':n.type==='warn'?'flag':'info',15)+'</div><div class="notif-text">'+esc(n.text)+'</div></div>').join('')
        : '<div class="empty" style="padding:20px 10px;"><div class="empty-icon">'+icon('check',26)+'</div><div class="empty-title">All caught up</div></div>')
     + '</div>';
   window.__notifList = list;
+  window.__notifListGen = gen;
 }
-function closeNotifAndGo(i){
-  const n = window.__notifList[i];
+function closeNotifAndGo(gen, i){
+  if(gen !== window.__notifListGen) return; // stale click against a list that's since been replaced — ignore rather than guess
+  const list = window.__notifList;
+  const n = list && list[i];
   state.notifOpen = false;
   renderNotifPanel();
   if(n && n.go) n.go();
@@ -5236,6 +5357,8 @@ async function init(){
   }catch(e){ SYNC_QUEUE = []; }
   await loadAutoAssignRules();
   await loadWeatherAlert();
+  await loadWeatherLocation(); // must resolve before ensureLiveWeather() below reads SOCIETY_LAT/LNG
+  ensureLiveWeather(); // fire-and-forget — re-renders itself once the reading lands, never blocks the rest of init()
   await loadClaudeApiKey();
   await loadStaffList();
   if(SYNC_QUEUE.length) flushSyncQueue();
@@ -5402,14 +5525,24 @@ function bindKeyboardAvoidance(){
   // feature-detected, purely additive, never required for the class to work.
   if(window.visualViewport){
     let baseHeight = window.visualViewport.height;
+    let __kbViewportTimer = null;
     window.visualViewport.addEventListener('resize', ()=>{
-      const shrunk = window.visualViewport.height < baseHeight * 0.75;
-      if(shrunk && document.activeElement && isTypingTarget(document.activeElement)){
-        document.body.classList.add('keyboard-open');
-      } else if(!shrunk){
-        baseHeight = Math.max(baseHeight, window.visualViewport.height);
-        if(!document.activeElement || !isTypingTarget(document.activeElement)) document.body.classList.remove('keyboard-open');
-      }
+      // iOS Safari fires this repeatedly with jittery intermediate height
+      // readings while the keyboard is still sliding in/out — deciding on
+      // every single event (instead of once the height has actually
+      // settled) is what makes body.keyboard-open flicker on/off mid-
+      // animation. Debounce to the last event in a burst, same idea as
+      // the focusout grace timer above.
+      clearTimeout(__kbViewportTimer);
+      __kbViewportTimer = setTimeout(()=>{
+        const shrunk = window.visualViewport.height < baseHeight * 0.75;
+        if(shrunk && document.activeElement && isTypingTarget(document.activeElement)){
+          document.body.classList.add('keyboard-open');
+        } else if(!shrunk){
+          baseHeight = Math.max(baseHeight, window.visualViewport.height);
+          if(!document.activeElement || !isTypingTarget(document.activeElement)) document.body.classList.remove('keyboard-open');
+        }
+      }, 120);
     });
   }
 }
@@ -5732,6 +5865,8 @@ function newDraft(formType){
   }
   draft._openFloor = def.floors ? def.floors[0] : null;
   draft._openSection = def.sections ? Object.keys(def.sections)[0] : null;
+  draft._justOpenedFloor = draft._openFloor;
+  draft._justOpenedSection = draft._openSection;
   return draft;
 }
 function startNewInspection(formType){
@@ -5741,6 +5876,8 @@ function startNewInspection(formType){
 function resumeDraft(){
   state.draft = state.resumeDraft;
   state.resumeDraft = null;
+  state.draft._justOpenedFloor = state.draft._openFloor;
+  state.draft._justOpenedSection = state.draft._openSection;
   goto('fill');
 }
 async function discardResumeDraft(){
@@ -6101,6 +6238,11 @@ function fillDailyTower(draft, def){
   const floorsHtml = def.floors.map((f,fi)=>{
     const fd = draft.floorData[f];
     const open = draft._openFloor === f;
+    // True for exactly the one render right after this floor opens (see
+    // toggleFloor/markFloorAllOk/maybeAdvanceFloor) — consumed and cleared
+    // below so later renders of an already-open floor (ticking a chip,
+    // typing remarks) don't replay the cascade.
+    const justOpened = open && draft._justOpenedFloor === f;
     const notOkCount = fd.items.filter(v=>v===false).length;
     const filledCount = fd.items.filter(v=>v!==null).length;
     const allOk = filledCount === def.floorItems.length && notOkCount === 0;
@@ -6112,7 +6254,7 @@ function fillDailyTower(draft, def){
       + '</div>'
       + '<div class="floor-body '+(open?'open':'')+'">'
         + '<div class="mini-actions"><button class="btn btn-sm btn-ghost" onclick="markFloorAllOk(\''+f+'\')">'+icon('check',14)+' '+T('btn_mark_all_ok')+'</button><button class="btn btn-sm btn-ghost" onclick="copyPrevFloor(\''+f+'\')">'+icon('refresh',14)+' '+T('btn_copy_prev_floor')+'</button></div>'
-        + '<div class="chip-grid">'
+        + '<div class="chip-grid'+(justOpened?' stagger-in':'')+'">'
         + def.floorItems.map((label,ii)=>{
             const crit = isCritical(label);
             return '<div class="chip '+(crit?'critical':'')+'">'+'<span class="chip-label '+(crit?'critical-name':'')+' lp-issue" '+'data-f="'+f+'" data-ii="'+ii+'" '+(fd.items[ii]===false? 'style="cursor:pointer;text-decoration:underline dotted;" title="Edit issue details"':'')+'>'+(crit?icon('alertTriangle',13):'')+tx(label)+'</span>'
@@ -6122,6 +6264,7 @@ function fillDailyTower(draft, def){
         + '<div class="field remarks-row"><label class="field-label">'+T('field_remarks')+'</label><textarea placeholder="'+T('remarks_placeholder')+'" oninput="setFloorRemarks(\''+f+'\',this.value)">'+esc(fd.remarks)+'</textarea></div>'
       + '</div></div>';
   }).join('');
+  draft._justOpenedFloor = null; // one-shot: consumed above, so it won't re-trigger on the next render
 
   const addHtml = def.additional.map((label,ai)=>{
     const item = draft.additionalData[ai];
@@ -6136,7 +6279,12 @@ function fillDailyTower(draft, def){
     + '<div class="card"><span class="section-label">'+T('label_additional_inspection')+'</span>'+addHtml+'</div>'
     + signatureBlock();
 }
-function toggleFloor(f){ state.draft._openFloor = (state.draft._openFloor===f)? null : f; render(); }
+function toggleFloor(f){
+  const opening = state.draft._openFloor !== f;
+  state.draft._openFloor = opening ? f : null;
+  state.draft._justOpenedFloor = opening ? f : null;
+  render();
+}
 function setFloorItem(f,ii,val){
   const fd = state.draft.floorData[f];
   fd.items[ii] = fd.items[ii]===val ? null : val;
@@ -6163,6 +6311,7 @@ function maybeAdvanceFloor(f){
   const idx = def.floors.indexOf(f);
   const next = def.floors[idx+1];
   draft._openFloor = next || null;
+  draft._justOpenedFloor = next || null;
   if(next) showToast(f+' floor done — moved to '+next);
 }
 function reopenFloorIssue(f, ii){
@@ -6179,6 +6328,7 @@ function markFloorAllOk(f){
       const idx = def.floors.indexOf(f);
       const next = def.floors[idx+1];
       state.draft._openFloor = next || null;
+      state.draft._justOpenedFloor = next || null;
       showToast(next ? (f+' floor done — moved to '+next) : 'All floors marked OK — last floor reached');
     } else {
       showToast('All items marked OK for '+f+' floor');
@@ -6223,6 +6373,8 @@ function fillSectioned(draft, def){
   const sectionsHtml = Object.entries(def.sections).map(([key, sec])=>{
     const rows = draft.sectionData[key];
     const open = draft._openSection === key;
+    // Same one-shot pattern as fillDailyTower's justOpened above.
+    const justOpened = open && draft._justOpenedSection === key;
     const notOk = rows.filter(r=>r.status===false).length;
     const filled = rows.filter(r=>r.status!==null).length;
     return '<div class="section-block">'
@@ -6231,7 +6383,7 @@ function fillSectioned(draft, def){
         + '<div><div class="section-title">'+tx(sec.title)+'</div><div class="section-count">'+filled+'/'+sec.items.length+' checked'+(notOk?' · '+notOk+' issue':'')+'</div></div>'
         + '<div class="chev">'+icon(open?'chevronUp':'chevronDown',16)+'</div>'
       + '</div>'
-      + '<div class="section-body '+(open?'':'collapsed')+'">'
+      + '<div class="section-body '+(open?'':'collapsed')+(justOpened?' stagger-in':'')+'">'
       + sec.items.map((label,ii)=>{
           const row = rows[ii];
           const crit = isCritical(label);
@@ -6251,6 +6403,7 @@ function fillSectioned(draft, def){
         }).join('')
       + '</div></div>';
   }).join('');
+  draft._justOpenedSection = null; // one-shot: consumed above, so it won't re-trigger on the next render
 
   let extra = '';
   if(draft.formType==='weekly-mep'){
@@ -6280,7 +6433,12 @@ function fillSectioned(draft, def){
 
   return '<span class="section-label">'+icon('clipboard',14)+' '+T('label_inspection_sections')+'</span>' + sectionsHtml + extra + signatureBlock();
 }
-function toggleSection(key){ state.draft._openSection = (state.draft._openSection===key)? null : key; render(); }
+function toggleSection(key){
+  const opening = state.draft._openSection !== key;
+  state.draft._openSection = opening ? key : null;
+  state.draft._justOpenedSection = opening ? key : null;
+  render();
+}
 function setSectionItem(key,ii,val){
   const row = state.draft.sectionData[key][ii];
   row.status = row.status===val ? null : val;
@@ -6343,16 +6501,24 @@ async function saveAutoAssignRule(tag, name){
   showToast(ok ? (name ? tag+' → '+name : 'Rule removed for '+tag) : 'Could not save rule');
 }
 /* =========================================================
-   WEATHER AMBIENCE — a light rain animation auto-shows on the
-   home hero during monsoon months (no admin action needed), and
-   an admin can escalate to Heavy Rain / Storm Warning from
-   Settings when a real alert is issued — that also posts a home
-   banner, since a signal residents can miss (motion) should never
-   be the *only* way critical info is conveyed. Cleared automatically
-   never happens on its own — an admin sets it back to Normal — since
-   an auto-expiring warning could silently understate real weather.
+   WEATHER AMBIENCE — the home hero's background animation now
+   follows the society's actual current conditions (sunny, windy,
+   cloudy, rain...), fetched from Open-Meteo (free, no API key,
+   CORS-enabled, so it's safe to call directly from the browser —
+   see fetchLiveWeather below). If that fetch hasn't landed yet or
+   fails (offline, API down), it falls back to the old Jun–Sep
+   "probably monsoon" guess so the hero card is never left guessing
+   wildly. An admin can still escalate to Heavy Rain / Storm Warning
+   from Settings for a REAL alert — that always wins over both the
+   live reading and the season guess, and also posts a home banner,
+   since a signal residents can miss (motion) should never be the
+   *only* way critical info is conveyed. Cleared automatically never
+   happens on its own — an admin sets it back to Normal — since an
+   auto-expiring warning could silently understate real weather.
    Stored shared (storeSet/storeGet) like AUTO_ASSIGN above, so every
-   device shows the same state. */
+   device shows the same admin-set state; the live reading itself is
+   plain per-device localStorage (see fetchLiveWeather) since there's
+   nothing to keep in sync — every device just asks Open-Meteo itself. */
 const MONSOON_MONTHS = [6,7,8,9]; // Jun–Sep — adjust for your region if needed
 function isMonsoonSeason(d){
   const m = (d||new Date()).getMonth()+1;
@@ -6375,18 +6541,175 @@ async function setWeatherAlert(level){
   showToast(ok ? (level ? WEATHER_ALERT_LEVELS[level].label+' set — residents/staff will see it on Home' : 'Weather alert cleared — back to season default') : 'Could not save');
   render();
 }
-/* Effective state driving both the hero animation and the home banner.
-   Admin override always wins over the season guess. */
+
+/* ---- Live current-weather fetch (Open-Meteo) ---- */
+// Society's coordinates for the live weather lookup below. These are just
+// the built-in defaults (Jaipur) — the effective values come from
+// loadWeatherLocation() below, which loads whatever an admin has saved in
+// Settings > Weather Ambience, falling back to these if nothing's been
+// set yet. Kept as plain `let`s (not `const`) so that override can apply.
+let SOCIETY_LAT = 26.9124, SOCIETY_LNG = 75.7873;
+let SOCIETY_LOCATION_LABEL = 'Jaipur, Rajasthan, India (built-in default)';
+const WEATHER_REFRESH_MS = 30*60*1000; // re-check every 30 min while the app is open
+const WEATHER_CACHE_KEY = 'mhm_live_weather';
+let LIVE_WEATHER = null; // {condition, tempC, windKph, fetchedAt} | null until the first fetch lands (or if it never does)
+let WEATHER_REFRESH_TIMER = null;
+async function loadWeatherLocation(){
+  try{
+    const r = await storeGet('settings:weatherLocation');
+    if(r && typeof r.lat==='number' && typeof r.lng==='number'){
+      SOCIETY_LAT = r.lat; SOCIETY_LNG = r.lng;
+      SOCIETY_LOCATION_LABEL = r.label || (r.lat.toFixed(3)+', '+r.lng.toFixed(3));
+    }
+  }catch(e){ /* keep the built-in default above */ }
+}
+// Admin-facing setter: persists (shared — every device/admin sees the same
+// location, same as WEATHER_ALERT), updates the live globals immediately,
+// and kicks off a fresh fetch so Settings reflects the new city right
+// away instead of waiting for the next 30-min refresh.
+async function setWeatherLocation(lat, lng, label){
+  SOCIETY_LAT = lat; SOCIETY_LNG = lng;
+  SOCIETY_LOCATION_LABEL = label || (lat.toFixed(3)+', '+lng.toFixed(3));
+  const ok = await storeSet('settings:weatherLocation', {lat:lat, lng:lng, label:SOCIETY_LOCATION_LABEL, setAt:new Date().toISOString(), setBy:(state.currentUser&&state.currentUser.name)||state.role});
+  showToast(ok ? 'Weather location set to '+SOCIETY_LOCATION_LABEL : 'Could not save location');
+  state._weatherLocQuery = ''; state._weatherLocResults = null; state._weatherLocSearching = false;
+  LIVE_WEATHER = null; // old readings were for the previous city — don't show them under the new one even for an instant
+  render();
+  fetchLiveWeather(); // fire-and-forget — re-renders itself again once the new city's reading lands
+}
+// Open-Meteo's geocoding endpoint — same free/no-key/CORS-enabled family as
+// the weather API itself. Debounced from the input (see onWeatherLocSearchInput)
+// rather than called on every keystroke.
+async function searchWeatherLocation(query){
+  query = (query||'').trim();
+  if(query.length<2) return [];
+  try{
+    const url = 'https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(query)+'&count=6&language=en&format=json';
+    const res = await fetch(url);
+    if(!res.ok) return [];
+    const data = await res.json();
+    return (data.results||[]).map(r=>({
+      lat: r.latitude, lng: r.longitude,
+      label: [r.name, r.admin1, r.country].filter(Boolean).join(', ')
+    }));
+  }catch(e){ return []; }
+}
+let __weatherLocSearchTimer = null;
+function onWeatherLocSearchInput(val){
+  state._weatherLocQuery = val;
+  clearTimeout(__weatherLocSearchTimer);
+  if(val.trim().length<2){ state._weatherLocResults = null; state._weatherLocSearching = false; render(); return; }
+  state._weatherLocSearching = true;
+  render();
+  __weatherLocSearchTimer = setTimeout(async ()=>{
+    const results = await searchWeatherLocation(val);
+    if(state._weatherLocQuery !== val) return; // superseded by newer typing — drop this stale response
+    state._weatherLocSearching = false;
+    state._weatherLocResults = results;
+    render();
+  }, 400);
+}
+// One-tap alternative to typing a city: useful when an admin is physically
+// at the society and just wants "here", without knowing the place name.
+// Only ever runs from an explicit Settings button tap — never automatic.
+function useDeviceLocationForWeather(){
+  if(!navigator.geolocation){ showToast("This browser doesn't support location — search by city name instead"); return; }
+  showToast('Getting your current location…');
+  navigator.geolocation.getCurrentPosition(
+    pos => setWeatherLocation(pos.coords.latitude, pos.coords.longitude, 'Current device location'),
+    err => showToast('Could not get your location — '+(err && err.message ? err.message : 'permission denied')),
+    {enableHighAccuracy:false, timeout:8000, maximumAge:60000}
+  );
+}
+// WMO weather codes (what Open-Meteo's `weathercode` uses) mapped down to
+// the handful of ambient visuals this app actually draws. Wind is checked
+// before falling through to sunny/cloudy so a genuinely windy day shows
+// as windy even under a clear sky — actual rain/storm codes still win
+// over wind, since only one ambient layer can be on screen at a time.
+function mapWeatherCodeToCondition(code, windKph, isDay){
+  const WINDY_KPH = 25; // "moderate breeze" and up — where a person would actually call it windy
+  if(code>=95) return 'thunder';                                    // thunderstorm, ± hail
+  if((code>=61 && code<=67) || (code>=80 && code<=82)){             // rain / freezing rain / showers
+    return ((code>=65 && code<=67) || code===82) ? 'heavy-rain-live' : 'monsoon';
+  }
+  if(code>=51 && code<=57) return 'monsoon';                        // drizzle
+  if(code===45 || code===48) return 'cloudy';                       // fog/mist — closest honest match
+  if(windKph>=WINDY_KPH) return 'windy';
+  if(code<=1) return isDay ? 'sunny' : 'clear-night';                // clear / mainly clear
+  return 'cloudy';                                                   // 2 partly cloudy / 3 overcast
+}
+function loadCachedLiveWeather(){
+  try{
+    const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+    if(raw) LIVE_WEATHER = JSON.parse(raw);
+  }catch(e){ /* corrupt/missing cache — fine, fetchLiveWeather() will refill it */ }
+}
+async function fetchLiveWeather(){
+  try{
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude='+SOCIETY_LAT+'&longitude='+SOCIETY_LNG
+      + '&current_weather=true&temperature_unit=celsius&windspeed_unit=kmh&timezone=auto';
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('weather http '+res.status);
+    const data = await res.json();
+    const cw = data && data.current_weather;
+    if(!cw) throw new Error('no current_weather in response');
+    LIVE_WEATHER = {
+      condition: mapWeatherCodeToCondition(cw.weathercode, cw.windspeed, cw.is_day===1),
+      tempC: Math.round(cw.temperature),
+      windKph: Math.round(cw.windspeed),
+      fetchedAt: Date.now()
+    };
+    try{ localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(LIVE_WEATHER)); }catch(e){}
+    render(); // reflect it immediately if the home hero is what's on screen right now
+  }catch(e){
+    console.warn('Live weather fetch failed — showing last known/season state instead:', e);
+    // LIVE_WEATHER is left exactly as it was (a still-fresh cached reading,
+    // a stale one, or null) — getWeatherState() below only falls back to
+    // the season guess when there's no reading of any age to show.
+  }
+}
+/* Kicked off once from init() — fire-and-forget, never awaited, so a
+   slow or unreachable weather API can't hold up app startup (the same
+   rule the comment above loadExternalLibs() spells out). Re-armed on a
+   timer for as long as the tab stays open, only doing work while it's
+   actually visible — mirrors the __syncInterval pattern above. */
+function ensureLiveWeather(){
+  loadCachedLiveWeather();
+  const stale = !LIVE_WEATHER || (Date.now()-LIVE_WEATHER.fetchedAt) > WEATHER_REFRESH_MS;
+  if(stale) fetchLiveWeather();
+  if(!WEATHER_REFRESH_TIMER){
+    WEATHER_REFRESH_TIMER = setInterval(function(){
+      if(document.visibilityState==='visible') fetchLiveWeather();
+    }, WEATHER_REFRESH_MS);
+  }
+}
+function weatherConditionLabel(cond){
+  return {sunny:'Sunny', 'clear-night':'Clear', windy:'Windy', cloudy:'Cloudy',
+    monsoon:'Monsoon', 'heavy-rain-live':'Rain', thunder:'Thunderstorm'}[cond] || 'Normal';
+}
+/* Human-readable line for the Settings "Current state" row. */
+function weatherStateLabel(){
+  if(WEATHER_ALERT) return WEATHER_ALERT_LEVELS[WEATHER_ALERT].label+' (admin-set)';
+  if(LIVE_WEATHER) return weatherConditionLabel(LIVE_WEATHER.condition)+' · '+LIVE_WEATHER.tempC+'°C — live';
+  return isMonsoonSeason() ? 'Monsoon season — light rain shown automatically' : 'Normal — no rain shown';
+}
+/* Effective state driving the hero animation (and, for the admin-set
+   values only, the home banner too). Priority: admin override > live
+   reading > season guess. */
 function getWeatherState(){
   if(WEATHER_ALERT) return WEATHER_ALERT;
+  if(LIVE_WEATHER) return LIVE_WEATHER.condition;
   return isMonsoonSeason() ? 'monsoon' : 'clear';
 }
-function weatherLayer(){
-  const ws = getWeatherState();
-  if(ws==='clear') return '';
-  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return '';
-  const isStorm = ws==='storm';
-  const isHeavy = ws==='heavy-rain';
+function liveTempSuffix(){
+  return (LIVE_WEATHER && typeof LIVE_WEATHER.tempC==='number') ? ' · '+LIVE_WEATHER.tempC+'°C' : '';
+}
+function rainWeatherLayer(ws){
+  // ws: 'monsoon' | 'heavy-rain-live' | 'thunder' (live-driven) or the
+  // admin-set 'heavy-rain' | 'storm' — all share the same rain-drop visual,
+  // just at a different intensity tier.
+  const isStorm = ws==='storm' || ws==='thunder';
+  const isHeavy = ws==='heavy-rain' || ws==='heavy-rain-live';
   const cls = isStorm ? 'storm' : isHeavy ? 'heavy' : 'light';
   const count = isStorm ? 32 : isHeavy ? 24 : 14;
   let drops = '';
@@ -6396,10 +6719,63 @@ function weatherLayer(){
     const delay = (Math.random()*2.5).toFixed(2);
     drops += '<span class="rain-drop" style="left:'+left+'%;animation-duration:'+dur+'s;animation-delay:-'+delay+'s;"></span>';
   }
-  const badge = (ws==='monsoon')
-    ? '<div class="weather-badge">'+icon('waterDrop',11)+' Monsoon</div>'
-    : '<div class="weather-badge">'+icon(WEATHER_ALERT_LEVELS[ws].icon,11)+' '+WEATHER_ALERT_LEVELS[ws].badge+'</div>';
+  const badge = (ws==='heavy-rain' || ws==='storm')
+    ? '<div class="weather-badge">'+icon(WEATHER_ALERT_LEVELS[ws].icon,11)+' '+WEATHER_ALERT_LEVELS[ws].badge+'</div>'
+    : '<div class="weather-badge">'+icon(ws==='thunder'?'lightningBolt':'waterDrop',11)+' '+weatherConditionLabel(ws)+liveTempSuffix()+'</div>';
   return '<div class="weather-layer '+cls+'" aria-hidden="true">'+drops+'</div>'+badge;
+}
+function sunWeatherLayer(isNight){
+  if(isNight){
+    let stars = '';
+    for(let i=0;i<7;i++){
+      const top = (6+Math.random()*46).toFixed(1);
+      const left = (Math.random()*66).toFixed(1); // stays clear of the moon in the top-right corner
+      const size = (1.5+Math.random()*1.8).toFixed(1);
+      const dur = (2+Math.random()*2.4).toFixed(2);
+      const delay = (Math.random()*2.5).toFixed(2);
+      stars += '<span class="star" style="top:'+top+'%;left:'+left+'%;width:'+size+'px;height:'+size+'px;animation-duration:'+dur+'s;animation-delay:-'+delay+'s;"></span>';
+    }
+    return '<div class="weather-layer" aria-hidden="true">'+stars+'<div class="moon-disc"></div></div>'
+      + '<div class="weather-badge">'+icon('moon',11)+' Clear'+liveTempSuffix()+'</div>';
+  }
+  return '<div class="weather-layer" aria-hidden="true"><div class="sun-rays"></div><div class="sun-disc"></div></div>'
+    + '<div class="weather-badge">'+icon('sun',11)+' Sunny'+liveTempSuffix()+'</div>';
+}
+function windWeatherLayer(){
+  let gusts = '';
+  for(let i=0;i<6;i++){
+    const top = (10+Math.random()*70).toFixed(1);
+    const width = (30+Math.random()*40).toFixed(0);
+    const dur = (2.2+Math.random()*1.6).toFixed(2);
+    const delay = (Math.random()*3).toFixed(2);
+    gusts += '<span class="wind-gust" style="top:'+top+'%;width:'+width+'px;animation-duration:'+dur+'s;animation-delay:-'+delay+'s;"></span>';
+  }
+  return '<div class="weather-layer" aria-hidden="true">'+gusts+'</div>'
+    + '<div class="weather-badge">'+icon('wind',11)+' Windy'+liveTempSuffix()+'</div>';
+}
+function cloudWeatherLayer(){
+  const puffs = [[8,64],[32,44],[54,54]]; // [top%, size px] — three soft drifting cloud puffs
+  let clouds = '';
+  for(let i=0;i<puffs.length;i++){
+    const top = puffs[i][0], size = puffs[i][1];
+    const dur = (24+Math.random()*10).toFixed(1);
+    const delay = (-Math.random()*22).toFixed(1); // negative: already mid-drift on first paint, not all starting from the left edge together
+    clouds += '<span class="cloud-shape" style="top:'+top+'%;width:'+size+'px;height:'+Math.round(size*0.6)+'px;animation-duration:'+dur+'s;animation-delay:'+delay+'s;">'
+      + '<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M7.5 18a4.3 4.3 0 01-.6-8.56A5.6 5.6 0 0117.6 9.9 4.1 4.1 0 0117 18H7.5z" fill="rgba(255,255,255,0.3)"/></svg>'
+      + '</span>';
+  }
+  return '<div class="weather-layer" aria-hidden="true">'+clouds+'</div>'
+    + '<div class="weather-badge">'+icon('cloud',11)+' Cloudy'+liveTempSuffix()+'</div>';
+}
+function weatherLayer(){
+  const ws = getWeatherState();
+  if(ws==='clear') return '';
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return '';
+  if(ws==='sunny') return sunWeatherLayer(false);
+  if(ws==='clear-night') return sunWeatherLayer(true);
+  if(ws==='windy') return windWeatherLayer();
+  if(ws==='cloudy') return cloudWeatherLayer();
+  return rainWeatherLayer(ws); // monsoon | heavy-rain-live | thunder | heavy-rain (admin) | storm (admin)
 }
 /* Synchronous cache of the Claude API key setting, loaded once at startup.
    storeGetPersonal() is async — several call sites below need the value
@@ -9023,8 +9399,22 @@ function viewSettings(){
     + '<p class="chart-fallback-note">Deeper admin screens (Dashboard analytics, audit log, report-builder help text) stay in English for now — only the day-to-day inspection screens are translated.</p>'
     + '</div>'
     + '<div class="card"><span class="section-label">'+icon('waterDrop',13)+' Weather Ambience</span>'
-      + '<p style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">Home screen par halka rain animation apne aap dikhta hai monsoon months (Jun–Sep) mein — koi setting nahi chahiye. Ek real alert ke liye yahan se escalate karo: Home par banner + notification bell dono mein turant sabko dikhega.</p>'
-      + '<div class="settings-row"><div class="settings-row-text"><b>Current state</b><span>'+(WEATHER_ALERT ? WEATHER_ALERT_LEVELS[WEATHER_ALERT].label+' (admin-set)' : (isMonsoonSeason() ? 'Monsoon season — light rain shown automatically' : 'Normal — no rain shown'))+'</span></div></div>'
+      + '<p style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">Home screen ka animation ab live current weather ke hisab se dikhta hai (sunny, cloudy, windy, rain, ya storm) — koi setting nahi chahiye, apne aap update hota rehta hai. Ek real alert ke liye yahan se escalate karo: Home par banner + notification bell dono mein turant sabko dikhega.</p>'
+      + '<div class="settings-row"><div class="settings-row-text"><b>Current state</b><span>'+weatherStateLabel()+'</span></div></div>'
+      + '<div class="settings-row"><div class="settings-row-text"><b>Weather location</b><span>'+icon('mapPin',11)+' '+esc(SOCIETY_LOCATION_LABEL)+' ('+SOCIETY_LAT.toFixed(3)+', '+SOCIETY_LNG.toFixed(3)+')</span></div></div>'
+      + (state.role==='admin' ?
+          '<div style="margin:2px 0 12px;">'
+            + '<input type="text" placeholder="Search city — e.g. Mumbai, Pune, Bengaluru" value="'+esc(state._weatherLocQuery)+'" oninput="onWeatherLocSearchInput(this.value)" style="font-size:12.5px;padding:9px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface-2);color:var(--ink);width:100%;box-sizing:border-box;">'
+            + (state._weatherLocSearching ? '<p style="font-size:11px;color:var(--ink-soft);margin-top:5px;">Searching…</p>' : '')
+            + (state._weatherLocResults && state._weatherLocResults.length ?
+                '<div class="weather-loc-results">' + state._weatherLocResults.map(r=>
+                  '<button type="button" class="weather-loc-result" onclick="setWeatherLocation('+r.lat+','+r.lng+',\''+r.label.replace(/'/g,"\\\\'")+'\')">'+icon('mapPin',13)+' '+esc(r.label)+'</button>'
+                ).join('') + '</div>'
+              : (state._weatherLocResults ? '<p style="font-size:11px;color:var(--ink-soft);margin-top:5px;">No matches — try a different spelling</p>' : ''))
+            + '<button type="button" class="btn btn-sm btn-ghost" style="margin-top:8px;width:auto;" onclick="useDeviceLocationForWeather()">'+icon('mapPin',13)+' Use my current location</button>'
+            + '<p style="font-size:11px; color:var(--ink-soft); margin-top:6px; line-height:1.5;">Society kisi doosre shehar mein shift/deploy ho toh yahan se update karo — code change ki zaroorat nahi.</p>'
+          + '</div>'
+        : '')
       + (state.role==='admin'
           ? '<div class="role-switch" style="background:var(--surface-2); margin-top:2px;">'
             + '<button class="'+(!WEATHER_ALERT?'active':'')+'" style="'+(!WEATHER_ALERT?'background:var(--brand); color:#fff;':'color:var(--ink-soft);')+'" onclick="setWeatherAlert(null)">Normal</button>'
@@ -9032,7 +9422,7 @@ function viewSettings(){
             + '<button class="'+(WEATHER_ALERT==='storm'?'active':'')+'" style="'+(WEATHER_ALERT==='storm'?'background:var(--danger); color:#fff;':'color:var(--ink-soft);')+'" onclick="setWeatherAlert(\'storm\')">Storm</button>'
           + '</div>'
           + '<p style="font-size:11px; color:var(--ink-soft); margin-top:8px; line-height:1.5;">Weather clear hone par khud wapas \'Normal\' par karna — auto-expire nahi hota, jaan-boojh kar (taaki koi alert khud-ba-khud chup na ho jaaye).</p>'
-          : '<p style="font-size:11.5px; color:var(--ink-soft);">Sirf Admin escalate kar sakta hai.</p>')
+          : '<p style="font-size:11.5px; color:var(--ink-soft);">Sirf Admin escalate ya location change kar sakta hai.</p>')
     + '</div>'
     + '<div class="card"><span class="section-label">'+icon('star',13)+' Resident Complaint Link</span>'
       + '<p style="font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;">Residents ko ye link do — unhe sirf complaint page dikhega, staff ka kuch nahi. WhatsApp group mein daalo ya QR notice board par lagao.</p>'
@@ -9112,6 +9502,10 @@ function auditLogHtml(){
   return entries.map(e=> '<div class="item-row" style="flex-direction:column; align-items:stretch;"><div style="display:flex; justify-content:space-between; align-items:center;"><b style="font-size:12px; display:flex; align-items:center; gap:6px;"><span class="audit-dot audit-dot-'+auditActionCategory(e.action)+'"></span>'+e.action.replace(/_/g,' ')+(e.by?' — '+esc(e.by):'')+'</b><span class="defect-meta">'+fmtDateTime(e.at)+'</span></div><span style="font-size:11.5px; color:var(--ink-soft); margin-left:14px;">'+esc(e.details||'')+'</span></div>').join('');
 }
 function openAuditLog(){ state._auditLogOpen = true; render(); }
+// Same debounce pattern as handleRecSearch/handleDefSearch/handleResSearch —
+// this one was the odd one out, calling renderModalLayer() straight from
+// oninput on every keystroke instead of through debounce().
+const handleAuditLogSearch = debounce(function(val){ state._auditLogQ = val; renderModalLayer(); }, 250);
 function auditLogModal(){
   const q = (state._auditLogQ||'').trim().toLowerCase();
   let entries = DB.audit;
@@ -9128,7 +9522,7 @@ function auditLogModal(){
   })();
   return '<div class="modal-backdrop" onclick="if(event.target===this) closeModals()"><div class="modal-sheet card">'
     + '<span class="section-label">'+icon('clipboard',14)+' Audit Log ('+DB.audit.length+')</span>'
-    + '<div class="field search-field" style="margin:8px 0;"><input type="text" placeholder="Search by action, person or detail…" value="'+esc(state._auditLogQ||'')+'" oninput="state._auditLogQ=this.value; renderModalLayer();"></div>'
+    + '<div class="field search-field" style="margin:8px 0;"><input type="text" placeholder="Search by action, person or detail…" value="'+esc(state._auditLogQ||'')+'" oninput="handleAuditLogSearch(this.value)"></div>'
     + '<div class="stack" style="gap:8px;">'+html+'</div>'
     + '<div class="btn-row" style="margin-top:10px;"><button class="btn btn-primary" onclick="closeModals()">Close</button></div>'
     + '</div></div>';
